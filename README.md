@@ -27,6 +27,12 @@ Monolito Java 21 + Spring Boot 3.2 + Spring Security 6 (JWT stateless) + Spring 
    UPDATE usuario SET rol = 'ADMINISTRADOR' WHERE correo = 'correo@ucc.edu.co';
    ```
 
+   Para el mapa del campus (planos y polígonos de los espacios) aplique también, una sola vez, la extensión V2. Es idempotente y funciona sobre una base que ya tiene datos:
+
+   ```
+   psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V2__mapa_infraestructura.sql
+   ```
+
 4. Pruebas unitarias (no requieren base de datos): `mvn test`
 
 5. Datos de prueba (opcional): `db/datos_prueba.sql`. **En Windows, fuerce UTF-8 al cargarlo**; de lo contrario `psql` usa la codificación de la consola y las tildes quedan corruptas (`Enfermería` se guarda como `EnfermerÃ­a`, sin dar error):
@@ -52,6 +58,27 @@ Además de los CRUD de contenido (`POST`, `PUT`, `DELETE` bajo `/api/v1/admin/..
 | `GET /admin/users` | `search`, `active` (true/false), `page` | Usuarios, con filtro opcional por estado de cuenta |
 
 Los `PUT` de servicios, preguntas frecuentes, espacios y asignaturas aceptan un campo opcional `activo` para ocultar o volver a mostrar el registro, y ahora también editan registros que están inactivos. Si se omite `activo`, se conserva el estado actual. Al dejar una asignatura activa se vuelve a validar el conflicto de aula y horario (409); mientras esté inactiva no se valida.
+
+## Mapa del campus (módulo de infraestructura)
+
+Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o piso), sin GPS ni mapas satelitales. El mapa usa Leaflet con `L.CRS.Simple`, así que las coordenadas son **píxeles de la imagen**: `x` desde el borde izquierdo y `y` desde el borde inferior.
+
+- Tabla `plano`: nombre, edificio, piso, imagen como data URL (PNG, JPEG o WebP, hasta ~2 MB) y su ancho y alto. El servidor lee las dimensiones de la propia imagen.
+- `espacio.plano_id` y `espacio.geometria` (`JSONB`): un objeto GeoJSON `Polygon` con posiciones `[x, y]`. La base exige que sea un Polygon y que geometría y plano vayan juntos; el backend valida además anillos cerrados, mínimo tres vértices, máximo 500 y que no se salga de la imagen (ajusta al borde con 2 px de tolerancia).
+- Cada cambio de polígono actualiza `plano.actualizado_en`; la app compara esa fecha para saber si su copia sin conexión sigue vigente.
+- Si un plano ya tiene espacios dibujados, su imagen solo se puede reemplazar por otra del mismo tamaño (409), para no desplazar los polígonos.
+
+| Endpoint | Rol | Devuelve |
+|---|---|---|
+| `GET /campus/plans` | autenticado | Planos activos, sin imagen, con `espaciosDibujados` y `actualizadoEn` |
+| `GET /campus/plans/{id}` | autenticado | Plano con imagen y `espacios: [{ id, nombre, codigo, categoria, geometria }]` (solo activos) |
+| `GET /admin/campus/plans` · `GET /admin/campus/plans/{id}` | ADMINISTRADOR | Igual, en cualquier estado |
+| `POST /admin/campus/plans` · `PUT /admin/campus/plans/{id}` | ADMINISTRADOR | `{ nombre, edificio, piso, imagen, ancho, alto, activo }`; en `PUT`, `imagen: null` conserva la actual |
+| `DELETE /admin/campus/plans/{id}` | ADMINISTRADOR | Eliminación lógica; los polígonos se conservan |
+| `PUT /admin/campus/spaces/{id}/geometry` | ADMINISTRADOR | `{ planoId, geometria }` (Geometry o Feature GeoJSON). 422 si el polígono no es válido |
+| `DELETE /admin/campus/spaces/{id}/geometry` | ADMINISTRADOR | Quita el espacio del mapa |
+
+`GET /campus/spaces` y `GET /admin/campus/spaces` ahora incluyen `planoId` y `geometria` en cada espacio. El `PUT` de espacios no toca la geometría.
 
 ## Configuración
 

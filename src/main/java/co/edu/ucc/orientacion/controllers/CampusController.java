@@ -1,7 +1,10 @@
 package co.edu.ucc.orientacion.controllers;
 
+import co.edu.ucc.orientacion.dto.request.GeometryRequest;
+import co.edu.ucc.orientacion.dto.request.PlanRequest;
 import co.edu.ucc.orientacion.dto.request.SpaceRequest;
 import co.edu.ucc.orientacion.dto.response.ApiResponse;
+import co.edu.ucc.orientacion.services.CampusMapService;
 import co.edu.ucc.orientacion.services.CampusService;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -28,15 +31,18 @@ import java.util.UUID;
 public class CampusController {
 
     private final CampusService campusService;
+    private final CampusMapService campusMapService;
 
     /**
-     * Crea el controller con el servicio del campus.
+     * Crea el controller con los servicios del campus y del mapa.
      *
      * @author Diego Luna
      * @param campusService servicio del campus
+     * @param campusMapService servicio del mapa del campus
      */
-    public CampusController(CampusService campusService) {
+    public CampusController(CampusService campusService, CampusMapService campusMapService) {
         this.campusService = campusService;
+        this.campusMapService = campusMapService;
     }
 
     /**
@@ -119,5 +125,122 @@ public class CampusController {
     public ResponseEntity<ApiResponse> deleteSpace(@PathVariable UUID id) {
         campusService.deleteSpace(id);
         return ResponseEntity.ok(ApiResponse.ok(null, "Espacio eliminado correctamente"));
+    }
+
+    /**
+     * Lista los planos del campus visibles para los estudiantes, sin la imagen.
+     *
+     * @author Diego Luna
+     * @return ResponseEntity con HTTP 200 y los planos
+     */
+    @GetMapping("/campus/plans")
+    public ResponseEntity<ApiResponse> getPlans() {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.getPlans(), "Planos obtenidos correctamente"));
+    }
+
+    /**
+     * Devuelve un plano con su imagen y los polígonos de sus espacios, listo para el mapa.
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @return ResponseEntity con HTTP 200 y el plano completo
+     * @throws co.edu.ucc.orientacion.exceptions.NotFoundException cuando el plano no existe o está inactivo
+     */
+    @GetMapping("/campus/plans/{id}")
+    public ResponseEntity<ApiResponse> getPlan(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.getPlan(id), "Plano obtenido correctamente"));
+    }
+
+    /**
+     * Lista todos los planos, activos e inactivos, para la administración.
+     *
+     * @author Diego Luna
+     * @return ResponseEntity con HTTP 200 y los planos
+     */
+    @GetMapping("/admin/campus/plans")
+    public ResponseEntity<ApiResponse> listAllPlans() {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.listAllPlans(), "Planos obtenidos correctamente"));
+    }
+
+    /**
+     * Devuelve un plano de cualquier estado con todos sus espacios dibujados, para el editor.
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @return ResponseEntity con HTTP 200 y el plano completo
+     * @throws co.edu.ucc.orientacion.exceptions.NotFoundException cuando el plano no existe
+     */
+    @GetMapping("/admin/campus/plans/{id}")
+    public ResponseEntity<ApiResponse> getPlanForAdmin(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.getPlanForAdmin(id), "Plano obtenido correctamente"));
+    }
+
+    /**
+     * Crea un plano a partir de una imagen.
+     *
+     * @author Diego Luna
+     * @param request datos del plano con la imagen como data URL
+     * @return ResponseEntity con HTTP 201 y el plano creado
+     * @throws co.edu.ucc.orientacion.exceptions.BadRequestException cuando la imagen no es válida
+     */
+    @PostMapping("/admin/campus/plans")
+    public ResponseEntity<ApiResponse> createPlan(@Valid @RequestBody PlanRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(ApiResponse.ok(campusMapService.createPlan(request), "Plano creado correctamente"));
+    }
+
+    /**
+     * Actualiza un plano; la imagen es opcional.
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @param request nuevos datos del plano
+     * @return ResponseEntity con HTTP 200 y el plano actualizado
+     * @throws co.edu.ucc.orientacion.exceptions.ConflictException cuando la nueva imagen desplazaría los polígonos
+     */
+    @PutMapping("/admin/campus/plans/{id}")
+    public ResponseEntity<ApiResponse> updatePlan(@PathVariable UUID id, @Valid @RequestBody PlanRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.updatePlan(id, request), "Plano actualizado correctamente"));
+    }
+
+    /**
+     * Elimina lógicamente un plano.
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @return ResponseEntity con HTTP 200
+     * @throws co.edu.ucc.orientacion.exceptions.NotFoundException cuando el plano no existe
+     */
+    @DeleteMapping("/admin/campus/plans/{id}")
+    public ResponseEntity<ApiResponse> deletePlan(@PathVariable UUID id) {
+        campusMapService.deletePlan(id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Plano eliminado correctamente"));
+    }
+
+    /**
+     * Guarda el polígono GeoJSON de un espacio dibujado en el panel.
+     *
+     * @author Diego Luna
+     * @param id identificador del espacio
+     * @param request plano y geometría GeoJSON
+     * @return ResponseEntity con HTTP 200 y el espacio actualizado
+     * @throws co.edu.ucc.orientacion.exceptions.UnprocessableEntityException cuando la geometría no es válida
+     */
+    @PutMapping("/admin/campus/spaces/{id}/geometry")
+    public ResponseEntity<ApiResponse> setSpaceGeometry(@PathVariable UUID id, @Valid @RequestBody GeometryRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.setSpaceGeometry(id, request), "Ubicación guardada correctamente"));
+    }
+
+    /**
+     * Quita el polígono de un espacio.
+     *
+     * @author Diego Luna
+     * @param id identificador del espacio
+     * @return ResponseEntity con HTTP 200 y el espacio sin ubicación
+     * @throws co.edu.ucc.orientacion.exceptions.NotFoundException cuando el espacio no existe
+     */
+    @DeleteMapping("/admin/campus/spaces/{id}/geometry")
+    public ResponseEntity<ApiResponse> clearSpaceGeometry(@PathVariable UUID id) {
+        return ResponseEntity.ok(ApiResponse.ok(campusMapService.clearSpaceGeometry(id), "Ubicación eliminada correctamente"));
     }
 }

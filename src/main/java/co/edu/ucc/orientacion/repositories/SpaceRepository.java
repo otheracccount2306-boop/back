@@ -1,11 +1,17 @@
 package co.edu.ucc.orientacion.repositories;
 
+import co.edu.ucc.orientacion.dto.response.SpaceShapeResponse;
 import co.edu.ucc.orientacion.models.Espacio;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -19,6 +25,8 @@ import java.util.UUID;
 @Repository
 public class SpaceRepository {
 
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private static final RowMapper<Espacio> ESPACIO_MAPPER = (rs, i) -> new Espacio(
             rs.getObject("id", UUID.class),
             rs.getString("nombre"),
@@ -28,8 +36,18 @@ public class SpaceRepository {
             rs.getString("piso"),
             rs.getString("descripcion"),
             rs.getString("referencia"),
+            rs.getObject("plano_id", UUID.class),
+            readJson(rs, "geometria"),
             rs.getBoolean("activo"),
             rs.getObject("creado_en", LocalDateTime.class));
+
+    private static final RowMapper<SpaceShapeResponse> SHAPE_MAPPER = (rs, i) -> new SpaceShapeResponse(
+            rs.getObject("id", UUID.class),
+            rs.getString("nombre"),
+            rs.getString("codigo"),
+            rs.getString("categoria"),
+            rs.getBoolean("activo"),
+            readJson(rs, "geometria"));
 
     private final NamedParameterJdbcTemplate jdbc;
 
@@ -181,6 +199,62 @@ public class SpaceRepository {
     public int deactivate(UUID id) {
         return jdbc.update("UPDATE espacio SET activo = FALSE WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id));
+    }
+
+    /**
+     * Lista los espacios dibujados sobre un plano con lo mínimo que necesita el mapa.
+     *
+     * @author Diego Luna
+     * @param planoId identificador del plano
+     * @param onlyActive true para devolver solo los espacios visibles para los estudiantes
+     * @return espacios con su polígono, ordenados por código
+     */
+    public List<SpaceShapeResponse> findShapesByPlan(UUID planoId, boolean onlyActive) {
+        return jdbc.query("""
+                SELECT id, nombre, codigo, categoria, activo, geometria FROM espacio
+                WHERE plano_id = :planoId
+                  AND geometria IS NOT NULL
+                  AND (CAST(:onlyActive AS BOOLEAN) = FALSE OR activo = TRUE)
+                ORDER BY codigo
+                """,
+                new MapSqlParameterSource().addValue("planoId", planoId).addValue("onlyActive", onlyActive),
+                SHAPE_MAPPER);
+    }
+
+    /**
+     * Guarda el polígono de un espacio y el plano sobre el que se dibujó. Con ambos valores en
+     * null borra la ubicación del espacio en el mapa.
+     *
+     * @author Diego Luna
+     * @param id identificador del espacio
+     * @param planoId plano del polígono, o null para borrar
+     * @param geometria GeoJSON Geometry serializado, o null para borrar
+     * @return espacio actualizado o vacío si no existe
+     */
+    public Optional<Espacio> updateGeometry(UUID id, UUID planoId, String geometria) {
+        return jdbc.query("""
+                UPDATE espacio
+                SET plano_id = :planoId, geometria = CAST(:geometria AS JSONB)
+                WHERE id = :id
+                RETURNING *
+                """,
+                new MapSqlParameterSource()
+                        .addValue("id", id)
+                        .addValue("planoId", planoId)
+                        .addValue("geometria", geometria),
+                ESPACIO_MAPPER).stream().findFirst();
+    }
+
+    private static JsonNode readJson(ResultSet rs, String column) throws SQLException {
+        String raw = rs.getString(column);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return JSON.readTree(raw);
+        } catch (JsonProcessingException e) {
+            throw new SQLException("JSON inválido en la columna " + column, e);
+        }
     }
 
     private MapSqlParameterSource params(Espacio e) {

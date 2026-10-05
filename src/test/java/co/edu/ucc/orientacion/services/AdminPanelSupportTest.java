@@ -98,7 +98,7 @@ class AdminPanelSupportTest {
     }
 
     private Espacio espacio(boolean activo) {
-        return new Espacio(id, "Lab", "LAB-01", "LABORATORIO", null, null, null, null, activo, null);
+        return new Espacio(id, "Lab", "LAB-01", "LABORATORIO", null, null, null, null, null, null, activo, null);
     }
 
     private Asignatura asignatura(boolean activo) {

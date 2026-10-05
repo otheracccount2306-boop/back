@@ -33,6 +33,14 @@ Monolito Java 21 + Spring Boot 3.2 + Spring Security 6 (JWT stateless) + Spring 
    psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V2__mapa_infraestructura.sql
    ```
 
+   Para cargar los planos y salones del **Bloque 2 (2A y 2B)**, generados desde los DWG del levantamiento arquitectónico, ejecute después de V2:
+
+   ```
+   psql -U postgres -d ucc_orientacion -1 -f db/datos_mapa_bloque2.sql
+   ```
+
+   Crea 4 planos (2A piso 1 y 2, 2B piso 1 y 2) y 39 espacios con su polígono, tomados de la capa `AREA`/`AREAS` de cada DWG; el nombre sale del texto que hay dentro de cada polígono. Los espacios de servicio (aseos, bodegas, cuarto de bombas) quedan inactivos. Si un espacio ya existe con el mismo código, solo recibe el plano y el polígono. Las imágenes limpias de cada planta están en `db/planos/`.
+
 4. Pruebas unitarias (no requieren base de datos): `mvn test`
 
 5. Datos de prueba (opcional): `db/datos_prueba.sql`. **En Windows, fuerce UTF-8 al cargarlo**; de lo contrario `psql` usa la codificación de la consola y las tildes quedan corruptas (`Enfermería` se guarda como `EnfermerÃ­a`, sin dar error):

@@ -1,5 +1,7 @@
 package co.edu.ucc.orientacion.models;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -15,6 +17,8 @@ import java.util.UUID;
  * @param piso piso donde se ubica
  * @param descripcion descripción del espacio
  * @param referencia indicaciones de referencia para llegar
+ * @param planoId plano sobre el que está dibujado, o null si no tiene ubicación en el mapa
+ * @param geometria polígono GeoJSON en píxeles del plano (L.CRS.Simple), o null
  * @param activo indica si el espacio está vigente
  * @param creadoEn fecha de creación
  */
@@ -27,6 +31,8 @@ public record Espacio(
         String piso,
         String descripcion,
         String referencia,
+        UUID planoId,
+        JsonNode geometria,
         boolean activo,
         LocalDateTime creadoEn) {
 }

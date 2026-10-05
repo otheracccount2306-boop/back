@@ -148,6 +148,8 @@ public class CampusService {
                 request.piso(),
                 request.descripcion(),
                 request.referencia(),
+                null,
+                null,
                 request.activo() == null ? currentActive : request.activo(),
                 null);
     }

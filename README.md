@@ -87,6 +87,7 @@ Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o pi
 | `GET /admin/campus/plans` · `GET /admin/campus/plans/{id}` | ADMINISTRADOR | Igual, en cualquier estado |
 | `POST /admin/campus/plans` · `PUT /admin/campus/plans/{id}` | ADMINISTRADOR | `{ nombre, edificio, piso, imagen, ancho, alto, activo }`; en `PUT`, `imagen: null` conserva la actual |
 | `DELETE /admin/campus/plans/{id}` | ADMINISTRADOR | Eliminación lógica; los polígonos se conservan |
+| `DELETE /admin/campus/plans/{id}/permanent?confirmacion=<nombre>` | ADMINISTRADOR | Elimina el plano definitivamente. Exige el nombre del plano (400 si no coincide); sus espacios siguen en el catálogo pero quedan sin ubicar. Devuelve `{ espaciosSinUbicar }` |
 | `PUT /admin/campus/spaces/{id}/geometry` | ADMINISTRADOR | `{ planoId, geometria }` (Geometry o Feature GeoJSON). 422 si el polígono no es válido |
 | `DELETE /admin/campus/spaces/{id}/geometry` | ADMINISTRADOR | Quita el espacio del mapa |
 

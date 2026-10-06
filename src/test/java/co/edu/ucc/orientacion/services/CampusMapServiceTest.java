@@ -227,4 +227,29 @@ class CampusMapServiceTest {
 
         assertNotNull(service.getPlan(id).imagen());
     }
+
+    @Test
+    @DisplayName("Eliminar definitivamente exige el nombre del plano y no toca nada si no coincide")
+    void purgeRequiresName() {
+        UUID id = UUID.randomUUID();
+        when(planRepository.findById(id)).thenReturn(Optional.of(plano(id, 100, 50)));
+
+        assertThrows(BadRequestException.class, () -> service.purgePlan(id, null));
+        assertThrows(BadRequestException.class, () -> service.purgePlan(id, "Bloque C"));
+        verify(spaceRepository, never()).clearGeometryByPlan(any());
+        verify(planRepository, never()).delete(any());
+    }
+
+    @Test
+    @DisplayName("Eliminar definitivamente quita los espacios del mapa y borra el plano")
+    void purgeClearsShapesAndDeletes() {
+        UUID id = UUID.randomUUID();
+        when(planRepository.findById(id)).thenReturn(Optional.of(plano(id, 100, 50)));
+        when(spaceRepository.clearGeometryByPlan(id)).thenReturn(4);
+        when(planRepository.delete(id)).thenReturn(1);
+
+        assertEquals(4, service.purgePlan(id, "  bloque c · piso 1 "));
+        verify(spaceRepository).clearGeometryByPlan(id);
+        verify(planRepository).delete(id);
+    }
 }

@@ -182,6 +182,18 @@ public class PlanRepository {
         return count == null ? 0 : count;
     }
 
+    /**
+     * Borra un plano de la base de forma definitiva. Antes hay que quitar los polígonos de sus
+     * espacios (SpaceRepository.clearGeometryByPlan), porque espacio.plano_id lo referencia.
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @return número de filas borradas
+     */
+    public int delete(UUID id) {
+        return jdbc.update("DELETE FROM plano WHERE id = :id", new MapSqlParameterSource("id", id));
+    }
+
     private static JsonNode readJson(ResultSet rs, String column) throws SQLException {
         String raw = rs.getString(column);
         if (raw == null) {

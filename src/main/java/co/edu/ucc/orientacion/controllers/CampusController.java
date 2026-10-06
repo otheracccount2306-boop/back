@@ -218,6 +218,27 @@ public class CampusController {
     }
 
     /**
+     * Elimina un plano de forma definitiva. Los espacios dibujados sobre él quedan sin ubicar.
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @param confirmacion nombre del plano, como segunda verificación
+     * @return ResponseEntity con HTTP 200 y la cantidad de espacios que quedaron sin ubicar
+     * @throws co.edu.ucc.orientacion.exceptions.NotFoundException cuando el plano no existe
+     * @throws co.edu.ucc.orientacion.exceptions.BadRequestException cuando la confirmación no coincide
+     */
+    @DeleteMapping("/admin/campus/plans/{id}/permanent")
+    public ResponseEntity<ApiResponse> purgePlan(
+            @PathVariable UUID id,
+            @RequestParam(required = false) String confirmacion) {
+        int liberados = campusMapService.purgePlan(id, confirmacion);
+        String detalle = liberados == 1 ? "1 espacio quedó sin ubicar en el mapa"
+                : liberados + " espacios quedaron sin ubicar en el mapa";
+        return ResponseEntity.ok(ApiResponse.ok(java.util.Map.of("espaciosSinUbicar", liberados),
+                "Plano eliminado definitivamente. " + detalle));
+    }
+
+    /**
      * Guarda el polígono GeoJSON de un espacio dibujado en el panel.
      *
      * @author Diego Luna

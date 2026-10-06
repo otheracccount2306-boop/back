@@ -253,6 +253,19 @@ public class SpaceRepository {
     }
 
     /**
+     * Quita del mapa todos los espacios dibujados sobre un plano: borra su polígono y su plano,
+     * pero el espacio sigue en el catálogo.
+     *
+     * @author Diego Luna
+     * @param planoId plano cuyos espacios se quitan del mapa
+     * @return número de espacios que quedaron sin ubicar
+     */
+    public int clearGeometryByPlan(UUID planoId) {
+        return jdbc.update("UPDATE espacio SET plano_id = NULL, geometria = NULL WHERE plano_id = :planoId",
+                new MapSqlParameterSource("planoId", planoId));
+    }
+
+    /**
      * Guarda el polígono de un espacio y el plano sobre el que se dibujó. Con ambos valores en
      * null borra la ubicación del espacio en el mapa.
      *

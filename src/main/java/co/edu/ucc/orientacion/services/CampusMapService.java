@@ -182,6 +182,32 @@ public class CampusMapService {
     }
 
     /**
+     * Elimina un plano de forma definitiva, con su imagen y su malla de caminos. Los espacios que
+     * estaban dibujados sobre él siguen en el catálogo, pero quedan sin ubicar en el mapa. Como no
+     * se puede deshacer, exige escribir el nombre del plano como confirmación (sin importar
+     * mayúsculas ni espacios en los extremos).
+     *
+     * @author Diego Luna
+     * @param id identificador del plano
+     * @param confirmacion nombre del plano escrito por el administrador
+     * @return número de espacios que quedaron sin ubicar
+     * @throws NotFoundException cuando el plano no existe
+     * @throws BadRequestException cuando la confirmación no coincide con el nombre del plano
+     */
+    @Transactional
+    public int purgePlan(UUID id, String confirmacion) {
+        Plano plano = findPlan(id);
+        if (confirmacion == null || !confirmacion.trim().equalsIgnoreCase(plano.nombre().trim())) {
+            throw new BadRequestException("Para eliminar el plano escribe su nombre exacto: " + plano.nombre());
+        }
+        int liberados = spaceRepository.clearGeometryByPlan(id);
+        if (planRepository.delete(id) == 0) {
+            throw new NotFoundException("Plano no encontrado");
+        }
+        return liberados;
+    }
+
+    /**
      * Guarda el polígono de un espacio sobre un plano. Valida que sea un Polygon de GeoJSON con
      * anillos cerrados dentro de la imagen y guarda solo type y coordinates.
      *

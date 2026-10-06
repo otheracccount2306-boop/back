@@ -30,6 +30,8 @@ import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -202,5 +204,27 @@ class CampusMapServiceTest {
         assertEquals(nav, guardado.getValue().navegacion());
         assertEquals(nav, detalle.navegacion());
         verify(planRepository, never()).countShapes(any());
+    }
+
+    @Test
+    @DisplayName("Con fondo vectorial el estudiante recibe el plano sin la imagen; el admin la conserva")
+    void studentPlanOmitsImageWithVectorBase() throws IOException {
+        UUID id = UUID.randomUUID();
+        JsonNode nav = parse("{\"malla\":\"1\",\"ancho\":1,\"alto\":1,\"base\":{\"perimetro\":[],\"edificios\":[]}}");
+        Plano campus = new Plano(id, "Campus", null, null, "data:image/png;base64,AA==", 100, 50, true, nav, null, null);
+        when(planRepository.findActiveById(id)).thenReturn(Optional.of(campus));
+        when(planRepository.findById(id)).thenReturn(Optional.of(campus));
+
+        assertNull(service.getPlan(id).imagen());
+        assertNotNull(service.getPlanForAdmin(id).imagen());
+    }
+
+    @Test
+    @DisplayName("Sin fondo vectorial el estudiante recibe la imagen del plano")
+    void studentPlanKeepsImageWithoutBase() {
+        UUID id = UUID.randomUUID();
+        when(planRepository.findActiveById(id)).thenReturn(Optional.of(plano(id, 100, 50)));
+
+        assertNotNull(service.getPlan(id).imagen());
     }
 }

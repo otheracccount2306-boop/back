@@ -40,7 +40,7 @@ Monolito Java 21 + Spring Boot 3.2 + Spring Security 6 (JWT stateless) + Spring 
    psql -U postgres -d ucc_orientacion -1 -f db/datos_mapa_campus.sql
    ```
 
-   Crea un solo plano, "Campus UCC Santa Marta": el plano general con la planta baja de cada bloque en su posición real, los 296 espacios de todos los pisos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8) con su polígono y su piso, y la malla de caminos que usa la app para trazar rutas. Todo sale de los DWG del levantamiento arquitectónico (febrero de 2019): los salones de la capa `AREAS` de cada bloque y la ubicación de cada bloque, del plano general. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) quedan inactivos y el administrador puede activarlos desde el panel. Si ya había cargado la versión anterior de 18 planos por piso, el script mueve esos espacios a este plano y borra los planos viejos. La imagen del campus está en `db/planos/mapa-campus.png`.
+   Crea un solo plano, "Campus UCC Santa Marta": los 296 espacios de todos los pisos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8) con su polígono y su piso, la malla de caminos que usa la app para trazar rutas y un fondo vectorial (el lote y el contorno de cada bloque). La app del estudiante no muestra el plano arquitectónico: solo ese fondo y los espacios a los que entran estudiantes y docentes. Todo sale de los DWG del levantamiento arquitectónico (febrero de 2019): los salones de la capa `AREAS` de cada bloque y la ubicación de cada bloque, del plano general. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) y los de uso exclusivo del personal (cocinas, archivos, áreas técnicas) quedan inactivos y el administrador puede activarlos desde el panel. También cambia el aula de las clases de ejemplo por espacios reales del mapa. Si ya había cargado la versión anterior de 18 planos por piso, el script mueve esos espacios a este plano y borra los planos viejos. La imagen del plano arquitectónico (`db/planos/mapa-campus.png`) solo la usa el editor del administrador.
 
    Nota sobre los DWG: en el archivo del Bloque 3 los títulos dicen "Bloque 6", y en el del Bloque 6 los pisos 4, 5 y la terraza dicen "Bloque 3". Por los códigos de las aulas (AULA 3 2xx y AULA 6 4xx) se usó el nombre del archivo.
 
@@ -76,14 +76,14 @@ Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o pi
 
 - Tabla `plano`: nombre, edificio, piso, imagen como data URL (PNG, JPEG o WebP, hasta ~2 MB) y su ancho y alto. El servidor lee las dimensiones de la propia imagen.
 - `espacio.plano_id` y `espacio.geometria` (`JSONB`): un objeto GeoJSON `Polygon` con posiciones `[x, y]`. La base exige que sea un Polygon y que geometría y plano vayan juntos; el backend valida además anillos cerrados, mínimo tres vértices, máximo 500 y que no se salga de la imagen (ajusta al borde con 2 px de tolerancia).
-- `plano.navegacion` (`JSONB`, V3): malla caminable de 0,5 m y entradas del campus, para que la app calcule caminos sin conexión. La genera el script de datos; el panel no la edita y al editar el plano se conserva.
+- `plano.navegacion` (`JSONB`, V3): malla caminable de 0,5 m, entradas del campus y, opcionalmente, `base` (lote y contorno de los edificios) para dibujar el mapa sin la imagen. La app calcula los caminos sin conexión. La genera el script de datos; el panel no la edita y al editar el plano se conserva.
 - Cada cambio de polígono actualiza `plano.actualizado_en`; la app compara esa fecha para saber si su copia sin conexión sigue vigente.
 - Si un plano ya tiene espacios dibujados, su imagen solo se puede reemplazar por otra del mismo tamaño (409), para no desplazar los polígonos.
 
 | Endpoint | Rol | Devuelve |
 |---|---|---|
 | `GET /campus/plans` | autenticado | Planos activos, sin imagen, con `espaciosDibujados` y `actualizadoEn` |
-| `GET /campus/plans/{id}` | autenticado | Plano con imagen, `navegacion` y `espacios: [{ id, nombre, codigo, categoria, edificio, piso, geometria }]` (solo activos) |
+| `GET /campus/plans/{id}` | autenticado | Plano con `navegacion` (la imagen va en `null` si el plano trae `navegacion.base`) y `espacios: [{ id, nombre, codigo, categoria, edificio, piso, geometria }]` (solo activos) |
 | `GET /admin/campus/plans` · `GET /admin/campus/plans/{id}` | ADMINISTRADOR | Igual, en cualquier estado |
 | `POST /admin/campus/plans` · `PUT /admin/campus/plans/{id}` | ADMINISTRADOR | `{ nombre, edificio, piso, imagen, ancho, alto, activo }`; en `PUT`, `imagen: null` conserva la actual |
 | `DELETE /admin/campus/plans/{id}` | ADMINISTRADOR | Eliminación lógica; los polígonos se conservan |
@@ -91,6 +91,8 @@ Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o pi
 | `DELETE /admin/campus/spaces/{id}/geometry` | ADMINISTRADOR | Quita el espacio del mapa |
 
 `GET /campus/spaces` y `GET /admin/campus/spaces` ahora incluyen `planoId` y `geometria` en cada espacio. El `PUT` de espacios no toca la geometría.
+
+**Aula de cada clase en el mapa.** `GET /academic/schedule` y las respuestas de asignaturas del administrador incluyen `espacioId`: el espacio del mapa cuyo código o nombre coincide con `asignatura.aula`, sin importar mayúsculas, tildes ni separadores (`AU-2-101`, `Aula 2 101` y `aula 2-101` valen igual). Solo cuenta un espacio activo y dibujado en un plano activo; si el nombre se repite en varios espacios, hay que escribir el código. Con `espacioId` la app muestra "Ver en mapa" en el horario.
 
 ## Configuración
 

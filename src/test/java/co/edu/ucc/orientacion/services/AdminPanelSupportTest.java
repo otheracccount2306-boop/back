@@ -89,7 +89,7 @@ class AdminPanelSupportTest {
         servicesService = new ServicesService(
                 serviceRepository, faqRepository, objectMapper, Validation.buildDefaultValidatorFactory().getValidator());
         campusService = new CampusService(spaceRepository);
-        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository);
+        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository, spaceRepository);
         newsService = new NewsService(newsRepository, eventRepository);
     }
 

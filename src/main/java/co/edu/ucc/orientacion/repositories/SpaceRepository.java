@@ -224,6 +224,35 @@ public class SpaceRepository {
     }
 
     /**
+     * Espacio activo ubicado en el mapa, con lo necesario para reconocerlo por el aula de una clase.
+     *
+     * @author Diego Luna
+     * @param id identificador del espacio
+     * @param codigo código del espacio, por ejemplo AU-2-101
+     * @param nombre nombre del espacio, por ejemplo Aula 2 101
+     */
+    public record MappedRoom(UUID id, String codigo, String nombre) {
+    }
+
+    /**
+     * Lista los espacios activos que tienen polígono en algún plano activo: los únicos que se
+     * pueden mostrar en el mapa del estudiante.
+     *
+     * @author Diego Luna
+     * @return espacios ubicados en el mapa
+     */
+    public List<MappedRoom> findMappedRooms() {
+        return jdbc.query("""
+                SELECT e.id, e.codigo, e.nombre FROM espacio e
+                JOIN plano p ON p.id = e.plano_id AND p.activo = TRUE
+                WHERE e.activo = TRUE AND e.geometria IS NOT NULL
+                ORDER BY e.codigo
+                """,
+                new MapSqlParameterSource(),
+                (rs, i) -> new MappedRoom(rs.getObject("id", UUID.class), rs.getString("codigo"), rs.getString("nombre")));
+    }
+
+    /**
      * Guarda el polígono de un espacio y el plano sobre el que se dibujó. Con ambos valores en
      * null borra la ubicación del espacio en el mapa.
      *

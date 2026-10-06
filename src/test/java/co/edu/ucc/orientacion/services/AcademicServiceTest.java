@@ -9,6 +9,7 @@ import co.edu.ucc.orientacion.exceptions.NotFoundException;
 import co.edu.ucc.orientacion.models.Asignatura;
 import co.edu.ucc.orientacion.repositories.CalendarRepository;
 import co.edu.ucc.orientacion.repositories.EnrollmentRepository;
+import co.edu.ucc.orientacion.repositories.SpaceRepository;
 import co.edu.ucc.orientacion.repositories.SubjectRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -24,6 +25,7 @@ import java.util.List;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -49,11 +51,14 @@ class AcademicServiceTest {
     @Mock
     private CalendarRepository calendarRepository;
 
+    @Mock
+    private SpaceRepository spaceRepository;
+
     private AcademicService academicService;
 
     @BeforeEach
     void setUp() {
-        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository);
+        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository, spaceRepository);
     }
 
     private SubjectRequest subjectRequest(List<String> dias, LocalTime inicio, LocalTime fin) {
@@ -79,6 +84,50 @@ class AcademicServiceTest {
         academicService.getSchedule(userId, null);
 
         verify(enrollmentRepository).findScheduleByUsuario(userId, null);
+    }
+
+    private static Asignatura clase(String codigo, String aula) {
+        return new Asignatura(UUID.randomUUID(), "Clase " + codigo, codigo, null, aula, "LUNES",
+                LocalTime.of(7, 0), LocalTime.of(9, 0), "2026-1", true, null);
+    }
+
+    @Test
+    @DisplayName("El horario ubica en el mapa el aula de cada clase por código o por nombre")
+    void scheduleResolvesRoomsOnMap() {
+        UUID userId = UUID.randomUUID();
+        UUID aula = UUID.randomUUID();
+        UUID sala = UUID.randomUUID();
+        UUID cafetin1 = UUID.randomUUID();
+        when(enrollmentRepository.findScheduleByUsuario(userId, null)).thenReturn(List.of(
+                clase("A", "au-2-101"),
+                clase("B", "Sala de computo 2"),
+                clase("C", "Cafetín"),
+                clase("D", "Aula 301"),
+                clase("E", null)));
+        when(spaceRepository.findMappedRooms()).thenReturn(List.of(
+                new SpaceRepository.MappedRoom(aula, "AU-2-101", "Aula 2 101"),
+                new SpaceRepository.MappedRoom(sala, "B45P2-SALA-COMP", "Sala de Cómputo 2"),
+                new SpaceRepository.MappedRoom(cafetin1, "CAF-1", "Cafetín"),
+                new SpaceRepository.MappedRoom(UUID.randomUUID(), "CAF-2", "Cafetín")));
+
+        List<SubjectResponse> horario = academicService.getSchedule(userId, null);
+
+        assertEquals(aula, horario.get(0).espacioId());
+        assertEquals(sala, horario.get(1).espacioId());
+        assertNull(horario.get(2).espacioId(), "un nombre repetido no identifica un solo espacio");
+        assertNull(horario.get(3).espacioId());
+        assertNull(horario.get(4).espacioId());
+    }
+
+    @Test
+    @DisplayName("El código de un espacio manda sobre el nombre de otro")
+    void roomCodeWinsOverName() {
+        UUID porCodigo = UUID.randomUUID();
+        var index = AcademicService.indexRooms(List.of(
+                new SpaceRepository.MappedRoom(UUID.randomUUID(), "X-1", "Lab 1"),
+                new SpaceRepository.MappedRoom(porCodigo, "LAB-1", "Laboratorio")));
+
+        assertEquals(porCodigo, index.get("LAB 1"));
     }
 
     @Test

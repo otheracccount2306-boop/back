@@ -76,7 +76,8 @@ public class CampusMapService {
     }
 
     /**
-     * Devuelve un plano activo con su imagen y los polígonos de sus espacios activos.
+     * Devuelve un plano activo con los polígonos de sus espacios activos. Si el plano trae fondo
+     * vectorial (navegacion.base), la app no dibuja el plano arquitectónico y la imagen no se envía.
      *
      * @author Diego Luna
      * @param id identificador del plano
@@ -85,7 +86,9 @@ public class CampusMapService {
      */
     public PlanDetailResponse getPlan(UUID id) {
         Plano plano = planRepository.findActiveById(id).orElseThrow(() -> new NotFoundException("Plano no encontrado"));
-        return PlanDetailResponse.of(plano, spaceRepository.findShapesByPlan(id, true));
+        PlanDetailResponse detail = PlanDetailResponse.of(plano, spaceRepository.findShapesByPlan(id, true));
+        boolean vectorBase = plano.navegacion() != null && plano.navegacion().hasNonNull("base");
+        return vectorBase ? detail.withoutImage() : detail;
     }
 
     /**

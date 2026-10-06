@@ -16,7 +16,7 @@ import java.util.UUID;
  * @param nombre nombre del plano
  * @param edificio edificio que representa
  * @param piso piso que representa
- * @param imagen imagen como data URL
+ * @param imagen imagen como data URL; null en la vista del estudiante cuando hay fondo vectorial
  * @param ancho ancho de la imagen en píxeles
  * @param alto alto de la imagen en píxeles
  * @param activo si el plano es visible para los estudiantes
@@ -48,5 +48,16 @@ public record PlanDetailResponse(
     public static PlanDetailResponse of(Plano plano, List<SpaceShapeResponse> espacios) {
         return new PlanDetailResponse(plano.id(), plano.nombre(), plano.edificio(), plano.piso(), plano.imagen(),
                 plano.ancho(), plano.alto(), plano.activo(), plano.actualizadoEn(), espacios, plano.navegacion());
+    }
+
+    /**
+     * Copia del detalle sin la imagen del plano, para los planos que traen fondo vectorial.
+     *
+     * @author Diego Luna
+     * @return detalle con imagen null
+     */
+    public PlanDetailResponse withoutImage() {
+        return new PlanDetailResponse(id, nombre, edificio, piso, null, ancho, alto, activo, actualizadoEn, espacios,
+                navegacion);
     }
 }

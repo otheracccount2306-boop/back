@@ -44,19 +44,19 @@ VALUES
 INSERT INTO asignatura (nombre, codigo, docente, aula, dias, hora_inicio, hora_fin, periodo_academico)
 VALUES
     ('Ingeniería de Software II', 'ISW-201', 'Prof. García Martínez',
-     'Aula 301', 'LUNES,MIERCOLES', '14:00', '16:00', '2026-1'),
+     'Aula 3 201', 'LUNES,MIERCOLES', '14:00', '16:00', '2026-1'),
 
     ('Base de Datos I',            'BDD-201', 'Prof. López Hernández',
-     'Lab 102',  'MARTES,JUEVES',  '16:00', '18:00', '2026-1'),
+     'Sala de Cómputo 2', 'MARTES,JUEVES',  '16:00', '18:00', '2026-1'),
 
     ('Matemáticas Discretas',      'MAT-101', 'Prof. Rodríguez Silva',
-     'Aula 201', 'LUNES,MIERCOLES,VIERNES', '07:00', '09:00', '2026-1'),
+     'Aula 2 201', 'LUNES,MIERCOLES,VIERNES', '07:00', '09:00', '2026-1'),
 
     ('Algoritmos y Programación',  'ALG-102', 'Prof. Martínez Díaz',
-     'Lab 101',  'MARTES,JUEVES',  '10:00', '12:00', '2026-1'),
+     'Sala de Cómputo 1', 'MARTES,JUEVES',  '10:00', '12:00', '2026-1'),
 
     ('Comunicación Oral y Escrita','COM-101', 'Prof. Vargas Pérez',
-     'Aula 105', 'VIERNES',        '08:00', '10:00', '2026-1');
+     'Aula 2 105', 'VIERNES',        '08:00', '10:00', '2026-1');
 
 -- ============================================================
 -- 3. MATRÍCULAS (juan.perez → todas las asignaturas)

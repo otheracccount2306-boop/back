@@ -10,12 +10,17 @@ import co.edu.ucc.orientacion.models.Asignatura;
 import co.edu.ucc.orientacion.models.EventoCalendario;
 import co.edu.ucc.orientacion.repositories.CalendarRepository;
 import co.edu.ucc.orientacion.repositories.EnrollmentRepository;
+import co.edu.ucc.orientacion.repositories.SpaceRepository;
 import co.edu.ucc.orientacion.repositories.SubjectRepository;
 import co.edu.ucc.orientacion.utils.TextUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import java.util.Locale;
 import java.util.UUID;
 
@@ -34,6 +39,7 @@ public class AcademicService {
     private final SubjectRepository subjectRepository;
     private final EnrollmentRepository enrollmentRepository;
     private final CalendarRepository calendarRepository;
+    private final SpaceRepository spaceRepository;
 
     /**
      * Crea el servicio con sus dependencias.
@@ -42,14 +48,17 @@ public class AcademicService {
      * @param subjectRepository repositorio de asignaturas
      * @param enrollmentRepository repositorio de matrículas
      * @param calendarRepository repositorio del calendario académico
+     * @param spaceRepository repositorio de espacios, para ubicar el aula de cada clase en el mapa
      */
     public AcademicService(
             SubjectRepository subjectRepository,
             EnrollmentRepository enrollmentRepository,
-            CalendarRepository calendarRepository) {
+            CalendarRepository calendarRepository,
+            SpaceRepository spaceRepository) {
         this.subjectRepository = subjectRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.calendarRepository = calendarRepository;
+        this.spaceRepository = spaceRepository;
     }
 
     /**
@@ -66,9 +75,58 @@ public class AcademicService {
         if (normalizedDay != null && !WEEK_DAYS.contains(normalizedDay)) {
             throw new BadRequestException("Día inválido. Valores permitidos: " + String.join(", ", WEEK_DAYS));
         }
-        return enrollmentRepository.findScheduleByUsuario(userId, normalizedDay).stream()
-                .map(SubjectResponse::from)
+        return withRooms(enrollmentRepository.findScheduleByUsuario(userId, normalizedDay));
+    }
+
+    /**
+     * Arma la vista de cada asignatura con el espacio del mapa que corresponde a su aula.
+     *
+     * @author Diego Luna
+     * @param subjects asignaturas
+     * @return asignaturas con espacioId cuando su aula está ubicada en el mapa
+     */
+    private List<SubjectResponse> withRooms(List<Asignatura> subjects) {
+        boolean anyRoom = subjects.stream().anyMatch(a -> a.aula() != null && !a.aula().isBlank());
+        Map<String, UUID> rooms = anyRoom ? indexRooms(spaceRepository.findMappedRooms()) : Map.of();
+        return subjects.stream()
+                .map(a -> {
+                    String key = TextUtils.normalizeRoom(a.aula());
+                    return SubjectResponse.from(a, key == null ? null : rooms.get(key));
+                })
                 .toList();
+    }
+
+    private SubjectResponse withRoom(Asignatura subject) {
+        return withRooms(List.of(subject)).get(0);
+    }
+
+    /**
+     * Índice para reconocer el aula de una clase: se puede escribir el código del espacio
+     * (AU-2-101) o su nombre (Aula 2 101), sin importar mayúsculas, tildes ni separadores. El
+     * código manda sobre el nombre, y un nombre repetido en varios espacios no se usa porque no
+     * se sabría cuál es.
+     *
+     * @author Diego Luna
+     * @param rooms espacios ubicados en el mapa
+     * @return aula normalizada → identificador del espacio
+     */
+    static Map<String, UUID> indexRooms(List<SpaceRepository.MappedRoom> rooms) {
+        Map<String, UUID> byCode = new HashMap<>();
+        Map<String, UUID> byName = new HashMap<>();
+        Set<String> repeated = new HashSet<>();
+        for (SpaceRepository.MappedRoom room : rooms) {
+            String code = TextUtils.normalizeRoom(room.codigo());
+            if (code != null) {
+                byCode.putIfAbsent(code, room.id());
+            }
+            String name = TextUtils.normalizeRoom(room.nombre());
+            if (name != null && byName.putIfAbsent(name, room.id()) != null) {
+                repeated.add(name);
+            }
+        }
+        repeated.forEach(byName::remove);
+        byName.putAll(byCode);
+        return byName;
     }
 
     /**
@@ -98,7 +156,7 @@ public class AcademicService {
         if (candidate.activo()) {
             ensureNoRoomConflict(candidate, null);
         }
-        return SubjectResponse.from(subjectRepository.create(candidate));
+        return withRoom(subjectRepository.create(candidate));
     }
 
     /**
@@ -110,7 +168,7 @@ public class AcademicService {
      */
     public List<SubjectResponse> listSubjects(String period) {
         String normalized = period == null || period.isBlank() ? null : period.trim();
-        return subjectRepository.findAll(normalized).stream().map(SubjectResponse::from).toList();
+        return withRooms(subjectRepository.findAll(normalized));
     }
 
     /**
@@ -134,7 +192,7 @@ public class AcademicService {
         if (candidate.activo()) {
             ensureNoRoomConflict(candidate, id);
         }
-        return SubjectResponse.from(subjectRepository.update(candidate));
+        return withRoom(subjectRepository.update(candidate));
     }
 
     /**

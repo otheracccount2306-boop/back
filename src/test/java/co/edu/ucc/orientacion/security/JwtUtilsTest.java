@@ -11,13 +11,6 @@ import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-/**
- * Pruebas de generación y validación de tokens JWT.
- *
- * @author Doris Arzuaga
- * @author Diego Luna
- * @author Gabriela Zabaleta
- */
 class JwtUtilsTest {
 
     private static final String SECRET = "ucc_orientacion_jwt_secret_2026_spring";

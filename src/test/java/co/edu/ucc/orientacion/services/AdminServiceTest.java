@@ -34,11 +34,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de la lógica de administración de usuarios y de auditoría.
- *
- * @author Doris Arzuaga
- */
 @ExtendWith(MockitoExtension.class)
 class AdminServiceTest {
 

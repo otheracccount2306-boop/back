@@ -29,14 +29,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 
-/**
- * Configuración de Spring Security: API stateless con JWT, control de acceso por roles
- * y respuestas de error en formato ApiResponse.
- *
- * @author Doris Arzuaga
- * @author Diego Luna
- * @author Gabriela Zabaleta
- */
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
@@ -58,44 +50,16 @@ public class SecurityConfig {
     @Value("${app.cors.allowed-origins:*}")
     private String allowedOrigins;
 
-    /**
-     * Crea la configuración de seguridad.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param jwtAuthFilter filtro de autenticación JWT
-     * @param objectMapper serializador JSON para las respuestas de error
-     */
     public SecurityConfig(JwtAuthFilter jwtAuthFilter, ObjectMapper objectMapper) {
         this.jwtAuthFilter = jwtAuthFilter;
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Define el codificador de contraseñas BCrypt.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @return codificador BCrypt
-     */
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(BCRYPT_ROUNDS);
     }
 
-    /**
-     * Define la cadena de filtros de seguridad. Los endpoints de autenticación son públicos,
-     * los de administración exigen el rol ADMINISTRADOR y el resto exige un token válido.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param http constructor de la configuración de seguridad HTTP
-     * @return cadena de filtros configurada
-     * @throws Exception cuando la configuración de seguridad no puede construirse
-     */
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
@@ -116,17 +80,6 @@ public class SecurityConfig {
         return http.build();
     }
 
-    /**
-     * Define la política CORS de la API. Los orígenes permitidos se leen de la propiedad
-     * app.cors.allowed-origins, separados por coma, y por defecto se aceptan todos.
-     * Se permiten los métodos GET, POST, PUT, DELETE y OPTIONS, todos los encabezados de
-     * solicitud y se expone el encabezado Authorization en la respuesta.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @return fuente de configuración CORS aplicada a todas las rutas
-     */
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         List<String> origins = Arrays.stream(allowedOrigins.split(","))

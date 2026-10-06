@@ -20,12 +20,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
-/**
- * Lógica de negocio de administración de usuarios: búsqueda, activación, cambio de rol y
- * eliminación definitiva, con registro en auditoría.
- *
- * @author Doris Arzuaga
- */
 @Service
 public class AdminService {
 
@@ -39,30 +33,12 @@ public class AdminService {
     private final AuditRepository auditRepository;
     private final ObjectMapper objectMapper;
 
-    /**
-     * Crea el servicio con sus dependencias.
-     *
-     * @author Doris Arzuaga
-     * @param userRepository repositorio de usuarios
-     * @param auditRepository repositorio de auditoría
-     * @param objectMapper serializador JSON del detalle de auditoría
-     */
     public AdminService(UserRepository userRepository, AuditRepository auditRepository, ObjectMapper objectMapper) {
         this.userRepository = userRepository;
         this.auditRepository = auditRepository;
         this.objectMapper = objectMapper;
     }
 
-    /**
-     * Lista usuarios de forma paginada, 10 por página, buscando por nombre, correo o programa.
-     *
-     * @author Doris Arzuaga
-     * @param search texto de búsqueda; null para no filtrar; la búsqueda ignora tildes y mayúsculas
-     * @param active true para solo cuentas activas, false para solo inactivas, null para todas
-     * @param page número de página, iniciando en 1
-     * @return página de usuarios
-     * @throws BadRequestException cuando la página es menor que 1
-     */
     public PageResponse<UserResponse> listUsers(String search, Boolean active, int page) {
         if (page < 1) {
             throw new BadRequestException("La página debe ser mayor o igual a 1");
@@ -74,18 +50,6 @@ public class AdminService {
         return PageResponse.of(content, page, PAGE_SIZE, userRepository.countSearch(pattern, active));
     }
 
-    /**
-     * Activa o desactiva una cuenta. Al desactivarla se invalidan sus sesiones. La acción queda
-     * registrada en auditoría.
-     *
-     * @author Doris Arzuaga
-     * @param actorId administrador que ejecuta la acción
-     * @param targetId usuario afectado
-     * @param activo true para activar, false para desactivar
-     * @return usuario actualizado
-     * @throws ForbiddenException cuando el administrador intenta actuar sobre su propia cuenta
-     * @throws NotFoundException cuando el usuario no existe
-     */
     @Transactional
     public UserResponse updateStatus(UUID actorId, UUID targetId, boolean activo) {
         ensureNotSelf(actorId, targetId);
@@ -98,19 +62,6 @@ public class AdminService {
         return UserResponse.from(findUser(targetId));
     }
 
-    /**
-     * Cambia el rol de un usuario entre ESTUDIANTE y ADMINISTRADOR. La acción queda registrada
-     * en auditoría.
-     *
-     * @author Doris Arzuaga
-     * @param actorId administrador que ejecuta la acción
-     * @param targetId usuario afectado
-     * @param rol nuevo rol
-     * @return usuario actualizado
-     * @throws ForbiddenException cuando el administrador intenta cambiar su propio rol
-     * @throws BadRequestException cuando el rol no es válido
-     * @throws NotFoundException cuando el usuario no existe
-     */
     @Transactional
     public UserResponse updateRole(UUID actorId, UUID targetId, String rol) {
         ensureNotSelf(actorId, targetId);
@@ -127,17 +78,6 @@ public class AdminService {
         return UserResponse.from(findUser(targetId));
     }
 
-    /**
-     * Elimina definitivamente a un usuario y sus datos personales, en ejercicio del derecho de
-     * supresión de la Ley 1581 de 2012. El contenido institucional que creó pasa al administrador
-     * que ejecuta la acción. La auditoría no conserva datos personales del usuario eliminado.
-     *
-     * @author Doris Arzuaga
-     * @param actorId administrador que ejecuta la acción
-     * @param targetId usuario a eliminar
-     * @throws ForbiddenException cuando el administrador intenta eliminar su propia cuenta
-     * @throws NotFoundException cuando el usuario no existe
-     */
     @Transactional
     public void deleteUser(UUID actorId, UUID targetId) {
         ensureNotSelf(actorId, targetId);
@@ -147,12 +87,6 @@ public class AdminService {
                 Map.of("rol", target.rol(), "motivo", "Derecho de supresión Ley 1581 de 2012"));
     }
 
-    /**
-     * Lista los roles disponibles en el sistema.
-     *
-     * @author Doris Arzuaga
-     * @return roles con su descripción
-     */
     public List<RoleResponse> listRoles() {
         return List.of(
                 new RoleResponse(ROLE_STUDENT, "Consulta horarios, servicios, campus, noticias y eventos"),

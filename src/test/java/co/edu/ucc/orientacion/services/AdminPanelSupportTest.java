@@ -41,14 +41,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de los listados administrativos y del campo activo, que permiten ocultar y volver a
- * mostrar servicios, preguntas, espacios y asignaturas desde el panel de administración.
- *
- * @author Doris Arzuaga
- * @author Diego Luna
- * @author Gabriela Zabaleta
- */
 @ExtendWith(MockitoExtension.class)
 class AdminPanelSupportTest {
 

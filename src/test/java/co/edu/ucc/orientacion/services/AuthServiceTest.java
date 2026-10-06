@@ -41,11 +41,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de la lógica de autenticación, registro y recuperación de contraseña.
- *
- * @author Doris Arzuaga
- */
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 

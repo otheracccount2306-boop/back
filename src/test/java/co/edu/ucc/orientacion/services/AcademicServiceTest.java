@@ -34,11 +34,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de la lógica del módulo académico: horario, calendario y conflictos de aula.
- *
- * @author Diego Luna
- */
 @ExtendWith(MockitoExtension.class)
 class AcademicServiceTest {
 

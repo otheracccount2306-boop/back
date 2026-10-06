@@ -24,11 +24,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de la lógica del módulo de infraestructura del campus.
- *
- * @author Diego Luna
- */
 @ExtendWith(MockitoExtension.class)
 class CampusServiceTest {
 

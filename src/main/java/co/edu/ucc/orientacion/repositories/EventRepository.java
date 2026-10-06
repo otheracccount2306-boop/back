@@ -11,11 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Acceso a datos de eventos institucionales.
- *
- * @author Gabriela Zabaleta
- */
 @Repository
 public class EventRepository {
 
@@ -40,41 +35,16 @@ public class EventRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Gabriela Zabaleta
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public EventRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Marca como CONCLUIDO los eventos activos cuya fecha es anterior al inicio del día indicado.
-     * Los eventos no se eliminan.
-     *
-     * @author Gabriela Zabaleta
-     * @param startOfToday inicio del día actual
-     * @return número de eventos concluidos
-     */
     public int concludePast(LocalDateTime startOfToday) {
         return jdbc.update(
                 "UPDATE evento SET estado = 'CONCLUIDO' WHERE estado = 'ACTIVO' AND fecha_hora < :startOfToday",
                 new MapSqlParameterSource("startOfToday", startOfToday));
     }
 
-    /**
-     * Lista eventos activos dentro de un rango de fechas, del más próximo al más lejano.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param from límite inferior inclusivo
-     * @param toExclusive límite superior exclusivo, o null para no acotar
-     * @param limit cantidad máxima de resultados
-     * @param offset desplazamiento inicial
-     * @return eventos de la página solicitada
-     */
     public List<Evento> findUpcoming(
             String categoria, LocalDateTime from, LocalDateTime toExclusive, int limit, int offset) {
         return jdbc.query("SELECT * FROM evento " + UPCOMING_FILTER
@@ -83,31 +53,12 @@ public class EventRepository {
                 EVENTO_MAPPER);
     }
 
-    /**
-     * Cuenta los eventos activos dentro de un rango de fechas.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param from límite inferior inclusivo
-     * @param toExclusive límite superior exclusivo, o null para no acotar
-     * @return total de eventos
-     */
     public long countUpcoming(String categoria, LocalDateTime from, LocalDateTime toExclusive) {
         Long total = jdbc.queryForObject("SELECT COUNT(*) FROM evento " + UPCOMING_FILTER,
                 rangeParams(categoria, from, toExclusive), Long.class);
         return total == null ? 0 : total;
     }
 
-    /**
-     * Lista eventos de cualquier estado y fecha para la administración, del más reciente al más antiguo.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param estado ACTIVO, CONCLUIDO o CANCELADO; null para todos los estados
-     * @param limit cantidad máxima de resultados
-     * @param offset desplazamiento inicial
-     * @return eventos de la página solicitada
-     */
     public List<Evento> findAllAdmin(String categoria, String estado, int limit, int offset) {
         return jdbc.query("""
                 SELECT * FROM evento
@@ -124,14 +75,6 @@ public class EventRepository {
                 EVENTO_MAPPER);
     }
 
-    /**
-     * Cuenta los eventos de cualquier estado y fecha para la administración.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param estado ACTIVO, CONCLUIDO o CANCELADO; null para todos los estados
-     * @return total de eventos que cumplen el filtro
-     */
     public long countAllAdmin(String categoria, String estado) {
         Long total = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM evento
@@ -143,25 +86,11 @@ public class EventRepository {
         return total == null ? 0 : total;
     }
 
-    /**
-     * Busca un evento por su identificador sin importar su estado.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador del evento
-     * @return evento encontrado o vacío
-     */
     public Optional<Evento> findById(UUID id) {
         return jdbc.query("SELECT * FROM evento WHERE id = :id",
                 new MapSqlParameterSource("id", id), EVENTO_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Inserta un evento con los datos del modelo recibido.
-     *
-     * @author Gabriela Zabaleta
-     * @param evento datos del evento a crear, incluido el autor
-     * @return evento creado
-     */
     public Evento create(Evento evento) {
         return jdbc.queryForObject("""
                 INSERT INTO evento (nombre, descripcion, categoria, lugar, fecha_hora, cupos, estado, creado_por)
@@ -170,13 +99,6 @@ public class EventRepository {
                 """, params(evento).addValue("creadoPor", evento.creadoPor()), EVENTO_MAPPER);
     }
 
-    /**
-     * Actualiza los datos y el estado de un evento.
-     *
-     * @author Gabriela Zabaleta
-     * @param evento evento con los nuevos datos, identificado por su id
-     * @return evento actualizado
-     */
     public Evento update(Evento evento) {
         return jdbc.queryForObject("""
                 UPDATE evento
@@ -187,14 +109,6 @@ public class EventRepository {
                 """, params(evento).addValue("id", evento.id()), EVENTO_MAPPER);
     }
 
-    /**
-     * Cancela lógicamente un evento activo cambiando su estado a CANCELADO. Los eventos
-     * concluidos conservan su estado.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador del evento
-     * @return número de filas afectadas
-     */
     public int cancel(UUID id) {
         return jdbc.update("UPDATE evento SET estado = 'CANCELADO' WHERE id = :id AND estado = 'ACTIVO'",
                 new MapSqlParameterSource("id", id));

@@ -1,22 +1,4 @@
--- ============================================================
--- DATOS DE PRUEBA — App Orientación Estudiantil UCC
--- Universidad Cooperativa de Colombia · Campus Santa Marta
--- ============================================================
--- Requisito: ejecutar PRIMERO V1__initial_schema.sql
--- Contraseña de todos los usuarios de prueba: Test1234!
---
--- Ajustes respecto a la versión original, para que los datos coincidan
--- con lo que la API guarda y filtra:
---   * asignatura.dias en mayúsculas y sin tildes (LUNES,MIERCOLES)
---   * espacio.categoria dentro de AULA, LABORATORIO, OFICINA,
---     BIBLIOTECA, CAFETERIA y AREA_COMUN
--- ============================================================
-
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
-
--- ============================================================
--- 1. USUARIOS
--- ============================================================
 
 INSERT INTO usuario (nombre, apellido, correo, contrasena_hash, programa_academico,
                      telefono, rol, activo, consentimiento_datos, consentimiento_fecha)
@@ -37,10 +19,6 @@ VALUES
      crypt('Test1234!', gen_salt('bf', 12)),
      'Administración de Empresas', '3012000003', 'ESTUDIANTE', TRUE, TRUE, NOW());
 
--- ============================================================
--- 2. ASIGNATURAS  (periodo 2026-1)
--- ============================================================
-
 INSERT INTO asignatura (nombre, codigo, docente, aula, dias, hora_inicio, hora_fin, periodo_academico)
 VALUES
     ('Ingeniería de Software II', 'ISW-201', 'Prof. García Martínez',
@@ -58,10 +36,6 @@ VALUES
     ('Comunicación Oral y Escrita','COM-101', 'Prof. Vargas Pérez',
      'Aula 2 105', 'VIERNES',        '08:00', '10:00', '2026-1');
 
--- ============================================================
--- 3. MATRÍCULAS (juan.perez → todas las asignaturas)
--- ============================================================
-
 INSERT INTO matricula (usuario_id, asignatura_id, periodo_academico)
 SELECT u.id, a.id, '2026-1'
 FROM   usuario u
@@ -73,10 +47,6 @@ SELECT u.id, a.id, '2026-1'
 FROM   usuario u, asignatura a
 WHERE  u.correo = 'maria.lopez@campusucc.edu.co'
   AND  a.codigo IN ('ISW-201', 'BDD-201');
-
--- ============================================================
--- 4. CALENDARIO ACADÉMICO 2026-1
--- ============================================================
 
 INSERT INTO evento_calendario (nombre, descripcion, categoria, fecha_inicio, fecha_fin)
 VALUES
@@ -108,10 +78,6 @@ VALUES
      'Fecha límite de entrega de notas y cierre administrativo.',
      'INSCRIPCIONES', '2026-06-20', '2026-06-20');
 
--- ============================================================
--- 5. SERVICIOS DE BIENESTAR
--- ============================================================
-
 INSERT INTO servicio (nombre, descripcion, categoria, edificio, horario, contacto)
 VALUES
     ('Apoyo psicológico',
@@ -138,10 +104,6 @@ VALUES
      'Información y gestión de becas, auxilios económicos y descuentos de matrícula disponibles para estudiantes.',
      'BECAS', 'Bloque Admin · Piso 1', 'Lunes a Viernes 8:00 AM – 4:00 PM', 'becas@campusucc.edu.co');
 
--- ============================================================
--- 6. DIRECTORIO INSTITUCIONAL (tabla servicio, categoria DEPARTAMENTO)
--- ============================================================
-
 INSERT INTO servicio (nombre, descripcion, categoria, edificio, horario, contacto)
 VALUES
     ('Admisiones y Registro Académico',
@@ -159,10 +121,6 @@ VALUES
     ('Soporte de Sistemas y TI',
      'Soporte técnico para plataformas institucionales, correo universitario y sistemas académicos.',
      'DEPARTAMENTO', 'Bloque C · Piso 1', 'Lunes a Viernes 8:00 AM – 5:00 PM', 'sistemas@campusucc.edu.co');
-
--- ============================================================
--- 7. ESPACIOS DEL CAMPUS
--- ============================================================
 
 INSERT INTO espacio (nombre, codigo, categoria, edificio, piso, descripcion, referencia)
 VALUES
@@ -206,10 +164,6 @@ VALUES
      'Cancha de grama sintética disponible para entrenamiento y torneos internos.',
      'Zona deportiva al costado occidental del campus.');
 
--- ============================================================
--- 8. NOTICIAS
--- ============================================================
-
 INSERT INTO noticia (titulo, resumen, contenido, categoria, estado, publicado_en, creado_por)
 SELECT
     'Inscripciones abiertas para el segundo semestre 2026',
@@ -241,10 +195,6 @@ SELECT
     'BORRADOR',
     id
 FROM usuario WHERE correo = 'admin@campusucc.edu.co';
-
--- ============================================================
--- 9. EVENTOS
--- ============================================================
 
 INSERT INTO evento (nombre, descripcion, categoria, lugar, fecha_hora, cupos, estado, creado_por)
 SELECT
@@ -294,10 +244,6 @@ SELECT
     id
 FROM usuario WHERE correo = 'admin@campusucc.edu.co';
 
--- ============================================================
--- 10. PREGUNTAS FRECUENTES
--- ============================================================
-
 INSERT INTO faq (pregunta, respuesta, categoria, frecuencia)
 VALUES
     ('¿Cómo me matriculo al siguiente semestre?',
@@ -339,10 +285,6 @@ VALUES
     ('¿Hay servicio de préstamo de equipos portátiles?',
      'La Biblioteca Central cuenta con un servicio de préstamo de computadores portátiles por período académico. Debes acercarte con tu carné estudiantil y diligenciar el formulario de préstamo. Sujeto a disponibilidad.',
      'BIENESTAR', 12);
-
--- ============================================================
--- VERIFICACIÓN FINAL
--- ============================================================
 
 SELECT 'usuarios'          AS tabla, COUNT(*) AS registros FROM usuario
 UNION ALL

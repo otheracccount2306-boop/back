@@ -7,13 +7,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 
-/**
- * Pruebas de las utilidades de texto y de hashing.
- *
- * @author Doris Arzuaga
- * @author Diego Luna
- * @author Gabriela Zabaleta
- */
 class TextUtilsTest {
 
     @Test

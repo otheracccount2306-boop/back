@@ -32,11 +32,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-/**
- * Lógica de negocio de autenticación, recuperación de contraseña y perfil de usuario.
- *
- * @author Doris Arzuaga
- */
 @Service
 public class AuthService {
 
@@ -54,15 +49,6 @@ public class AuthService {
     private final JwtUtils jwtUtils;
     private final List<String> institutionalDomains;
 
-    /**
-     * Crea el servicio con sus dependencias.
-     *
-     * @author Doris Arzuaga
-     * @param userRepository repositorio de usuarios
-     * @param passwordEncoder codificador BCrypt de contraseñas
-     * @param jwtUtils utilidades de generación de tokens
-     * @param institutionalDomains dominios de correo institucional separados por coma; vacío para no restringir
-     */
     public AuthService(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -77,16 +63,6 @@ public class AuthService {
                 .toList();
     }
 
-    /**
-     * Registra un nuevo estudiante validando el consentimiento de datos y el correo institucional.
-     *
-     * @author Doris Arzuaga
-     * @param request datos de registro
-     * @return identificador del usuario creado
-     * @throws UnprocessableEntityException cuando el consentimiento no fue otorgado
-     * @throws BadRequestException cuando el correo no pertenece a un dominio institucional
-     * @throws ConflictException cuando el correo ya está registrado
-     */
     public UUID register(RegisterRequest request) {
         if (!request.consentimientoDatos()) {
             throw new UnprocessableEntityException(
@@ -111,16 +87,6 @@ public class AuthService {
         }
     }
 
-    /**
-     * Autentica al usuario. Tras 5 intentos fallidos bloquea la cuenta por 15 minutos. Cualquier
-     * fallo responde con el mismo mensaje, sin indicar qué dato fue incorrecto. No es transaccional
-     * a propósito: el registro del intento fallido debe persistir aunque se lance la excepción.
-     *
-     * @author Doris Arzuaga
-     * @param request credenciales del usuario
-     * @return tokens de acceso y refresco junto con los datos del usuario
-     * @throws UnauthorizedException cuando las credenciales son inválidas, la cuenta está inactiva o bloqueada
-     */
     public AuthResponse login(LoginRequest request) {
         Usuario usuario = userRepository.findByCorreo(normalizeEmail(request.correo()))
                 .orElseThrow(() -> new UnauthorizedException(INVALID_CREDENTIALS));
@@ -139,15 +105,6 @@ public class AuthService {
         return buildAuthResponse(usuario, refreshToken);
     }
 
-    /**
-     * Genera un nuevo access token a partir de un refresh token válido y vigente en base de datos.
-     * El refresh token no se rota.
-     *
-     * @author Doris Arzuaga
-     * @param request refresh token recibido
-     * @return nuevo access token junto con el mismo refresh token
-     * @throws UnauthorizedException cuando el token es inválido, expiró, fue invalidado o la cuenta está inactiva
-     */
     public AuthResponse refresh(RefreshRequest request) {
         String refreshToken = request.refreshToken();
         String subject = jwtUtils.parseRefreshToken(refreshToken)
@@ -163,24 +120,10 @@ public class AuthService {
         return buildAuthResponse(usuario, refreshToken);
     }
 
-    /**
-     * Cierra la sesión invalidando todos los refresh tokens activos del usuario.
-     *
-     * @author Doris Arzuaga
-     * @param userId identificador del usuario autenticado
-     */
     public void logout(UUID userId) {
         userRepository.invalidateRefreshTokens(userId);
     }
 
-    /**
-     * Inicia la recuperación de contraseña. Si el correo existe genera un token de un solo uso
-     * con vigencia de 30 minutos, almacena su hash SHA-256 y lo registra en el log, porque en
-     * desarrollo no se envían correos reales. No revela si el correo existe.
-     *
-     * @author Doris Arzuaga
-     * @param request correo del usuario
-     */
     @Transactional
     public void requestPasswordRecovery(PasswordRecoveryRequest request) {
         userRepository.findByCorreo(normalizeEmail(request.correo()))
@@ -196,14 +139,6 @@ public class AuthService {
                 });
     }
 
-    /**
-     * Establece una nueva contraseña consumiendo un token de recuperación. También reinicia el
-     * bloqueo de la cuenta e invalida sus sesiones activas.
-     *
-     * @author Doris Arzuaga
-     * @param request token de recuperación y nueva contraseña
-     * @throws BadRequestException cuando el token no existe, expiró o ya fue usado
-     */
     @Transactional
     public void resetPassword(PasswordResetRequest request) {
         LocalDateTime now = LocalDateTime.now();
@@ -218,27 +153,10 @@ public class AuthService {
         userRepository.invalidateRefreshTokens(token.usuarioId());
     }
 
-    /**
-     * Obtiene el perfil del usuario autenticado.
-     *
-     * @author Doris Arzuaga
-     * @param userId identificador del usuario autenticado
-     * @return datos del perfil
-     * @throws NotFoundException cuando el usuario no existe
-     */
     public UserResponse getProfile(UUID userId) {
         return UserResponse.from(findUser(userId));
     }
 
-    /**
-     * Actualiza los campos editables del perfil: nombre, apellido, programa y teléfono.
-     *
-     * @author Doris Arzuaga
-     * @param userId identificador del usuario autenticado
-     * @param request nuevos datos del perfil
-     * @return perfil actualizado
-     * @throws NotFoundException cuando el usuario no existe
-     */
     @Transactional
     public UserResponse updateProfile(UUID userId, UpdateProfileRequest request) {
         findUser(userId);

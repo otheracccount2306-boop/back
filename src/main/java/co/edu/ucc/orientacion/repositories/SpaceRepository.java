@@ -17,11 +17,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Acceso a datos del catálogo de espacios del campus.
- *
- * @author Diego Luna
- */
 @Repository
 public class SpaceRepository {
 
@@ -53,23 +48,10 @@ public class SpaceRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Diego Luna
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public SpaceRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Lista los espacios activos, opcionalmente filtrados por categoría.
-     *
-     * @author Diego Luna
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @return espacios ordenados por nombre
-     */
     public List<Espacio> findActive(String categoria) {
         return jdbc.query("""
                 SELECT * FROM espacio
@@ -80,14 +62,6 @@ public class SpaceRepository {
                 new MapSqlParameterSource("categoria", categoria), ESPACIO_MAPPER);
     }
 
-    /**
-     * Busca espacios activos cuyo nombre o código contenga el patrón. La búsqueda ignora
-     * tildes y mayúsculas.
-     *
-     * @author Diego Luna
-     * @param pattern patrón de búsqueda con comodines en los extremos; la búsqueda ignora tildes y mayúsculas
-     * @return espacios encontrados ordenados por nombre
-     */
     public List<Espacio> search(String pattern) {
         return jdbc.query("""
                 SELECT * FROM espacio
@@ -99,26 +73,11 @@ public class SpaceRepository {
                 new MapSqlParameterSource("pattern", pattern), ESPACIO_MAPPER);
     }
 
-    /**
-     * Busca un espacio activo por su identificador.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @return espacio encontrado o vacío
-     */
     public Optional<Espacio> findActiveById(UUID id) {
         return jdbc.query("SELECT * FROM espacio WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id), ESPACIO_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Verifica si existe un espacio con el código indicado.
-     *
-     * @author Diego Luna
-     * @param codigo código del espacio
-     * @param excludeId espacio a excluir de la búsqueda, o null
-     * @return true si el código ya está en uso
-     */
     public boolean existsByCodigo(String codigo, UUID excludeId) {
         Boolean exists = jdbc.queryForObject("""
                 SELECT EXISTS (
@@ -131,25 +90,11 @@ public class SpaceRepository {
         return Boolean.TRUE.equals(exists);
     }
 
-    /**
-     * Busca un espacio por su identificador sin importar si está activo.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @return espacio encontrado o vacío
-     */
     public Optional<Espacio> findById(UUID id) {
         return jdbc.query("SELECT * FROM espacio WHERE id = :id",
                 new MapSqlParameterSource("id", id), ESPACIO_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Lista todos los espacios incluyendo los inactivos, para la administración.
-     *
-     * @author Diego Luna
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @return espacios ordenados por estado y nombre
-     */
     public List<Espacio> findAll(String categoria) {
         return jdbc.query("""
                 SELECT * FROM espacio
@@ -159,13 +104,6 @@ public class SpaceRepository {
                 new MapSqlParameterSource("categoria", categoria), ESPACIO_MAPPER);
     }
 
-    /**
-     * Inserta un espacio. Se ignoran el identificador y la fecha de creación del modelo recibido.
-     *
-     * @author Diego Luna
-     * @param espacio datos del espacio a crear, incluido su estado activo
-     * @return espacio creado
-     */
     public Espacio create(Espacio espacio) {
         return jdbc.queryForObject("""
                 INSERT INTO espacio (nombre, codigo, categoria, edificio, piso, descripcion, referencia, activo)
@@ -174,13 +112,6 @@ public class SpaceRepository {
                 """, params(espacio), ESPACIO_MAPPER);
     }
 
-    /**
-     * Actualiza un espacio, activo o no, incluido su estado de visibilidad.
-     *
-     * @author Diego Luna
-     * @param espacio espacio con los nuevos datos, identificado por su id
-     * @return espacio actualizado
-     */
     public Espacio update(Espacio espacio) {
         return jdbc.queryForObject("""
                 UPDATE espacio
@@ -191,26 +122,11 @@ public class SpaceRepository {
                 """, params(espacio).addValue("id", espacio.id()), ESPACIO_MAPPER);
     }
 
-    /**
-     * Desactiva lógicamente un espacio.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @return número de filas afectadas
-     */
     public int deactivate(UUID id) {
         return jdbc.update("UPDATE espacio SET activo = FALSE WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id));
     }
 
-    /**
-     * Lista los espacios dibujados sobre un plano con lo mínimo que necesita el mapa.
-     *
-     * @author Diego Luna
-     * @param planoId identificador del plano
-     * @param onlyActive true para devolver solo los espacios visibles para los estudiantes
-     * @return espacios con su polígono, ordenados por código
-     */
     public List<SpaceShapeResponse> findShapesByPlan(UUID planoId, boolean onlyActive) {
         return jdbc.query("""
                 SELECT id, nombre, codigo, categoria, edificio, piso, activo, geometria FROM espacio
@@ -223,24 +139,9 @@ public class SpaceRepository {
                 SHAPE_MAPPER);
     }
 
-    /**
-     * Espacio activo ubicado en el mapa, con lo necesario para reconocerlo por el aula de una clase.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @param codigo código del espacio, por ejemplo AU-2-101
-     * @param nombre nombre del espacio, por ejemplo Aula 2 101
-     */
     public record MappedRoom(UUID id, String codigo, String nombre) {
     }
 
-    /**
-     * Lista los espacios activos que tienen polígono en algún plano activo: los únicos que se
-     * pueden mostrar en el mapa del estudiante.
-     *
-     * @author Diego Luna
-     * @return espacios ubicados en el mapa
-     */
     public List<MappedRoom> findMappedRooms() {
         return jdbc.query("""
                 SELECT e.id, e.codigo, e.nombre FROM espacio e
@@ -252,29 +153,11 @@ public class SpaceRepository {
                 (rs, i) -> new MappedRoom(rs.getObject("id", UUID.class), rs.getString("codigo"), rs.getString("nombre")));
     }
 
-    /**
-     * Quita del mapa todos los espacios dibujados sobre un plano: borra su polígono y su plano,
-     * pero el espacio sigue en el catálogo.
-     *
-     * @author Diego Luna
-     * @param planoId plano cuyos espacios se quitan del mapa
-     * @return número de espacios que quedaron sin ubicar
-     */
     public int clearGeometryByPlan(UUID planoId) {
         return jdbc.update("UPDATE espacio SET plano_id = NULL, geometria = NULL WHERE plano_id = :planoId",
                 new MapSqlParameterSource("planoId", planoId));
     }
 
-    /**
-     * Guarda el polígono de un espacio y el plano sobre el que se dibujó. Con ambos valores en
-     * null borra la ubicación del espacio en el mapa.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @param planoId plano del polígono, o null para borrar
-     * @param geometria GeoJSON Geometry serializado, o null para borrar
-     * @return espacio actualizado o vacío si no existe
-     */
     public Optional<Espacio> updateGeometry(UUID id, UUID planoId, String geometria) {
         return jdbc.query("""
                 UPDATE espacio

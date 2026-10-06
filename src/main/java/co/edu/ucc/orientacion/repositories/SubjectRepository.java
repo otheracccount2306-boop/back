@@ -12,11 +12,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Acceso a datos de asignaturas.
- *
- * @author Diego Luna
- */
 @Repository
 public class SubjectRepository {
 
@@ -35,36 +30,15 @@ public class SubjectRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Diego Luna
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public SubjectRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Busca una asignatura activa por su identificador.
-     *
-     * @author Diego Luna
-     * @param id identificador de la asignatura
-     * @return asignatura encontrada o vacío
-     */
     public Optional<Asignatura> findActiveById(UUID id) {
         return jdbc.query("SELECT * FROM asignatura WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id), ASIGNATURA_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Verifica si existe una asignatura con el código indicado.
-     *
-     * @author Diego Luna
-     * @param codigo código de la asignatura
-     * @param excludeId asignatura a excluir de la búsqueda, o null
-     * @return true si el código ya está en uso
-     */
     public boolean existsByCodigo(String codigo, UUID excludeId) {
         Boolean exists = jdbc.queryForObject("""
                 SELECT EXISTS (
@@ -77,19 +51,6 @@ public class SubjectRepository {
         return Boolean.TRUE.equals(exists);
     }
 
-    /**
-     * Verifica si otra asignatura activa usa la misma aula en el mismo periodo, comparte algún
-     * día y se traslapa en horario.
-     *
-     * @author Diego Luna
-     * @param aula aula a verificar
-     * @param periodoAcademico periodo académico
-     * @param dias días de clase separados por coma
-     * @param horaInicio hora de inicio
-     * @param horaFin hora de finalización
-     * @param excludeId asignatura a excluir de la búsqueda, o null
-     * @return true si existe un conflicto de aula y horario
-     */
     public boolean hasConflict(
             String aula,
             String periodoAcademico,
@@ -119,25 +80,11 @@ public class SubjectRepository {
         return Boolean.TRUE.equals(exists);
     }
 
-    /**
-     * Busca una asignatura por su identificador sin importar si está activa.
-     *
-     * @author Diego Luna
-     * @param id identificador de la asignatura
-     * @return asignatura encontrada o vacío
-     */
     public Optional<Asignatura> findById(UUID id) {
         return jdbc.query("SELECT * FROM asignatura WHERE id = :id",
                 new MapSqlParameterSource("id", id), ASIGNATURA_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Lista las asignaturas incluyendo las inactivas, para la administración.
-     *
-     * @author Diego Luna
-     * @param periodoAcademico periodo académico exacto, o null para todos
-     * @return asignaturas ordenadas por periodo descendente, estado y nombre
-     */
     public List<Asignatura> findAll(String periodoAcademico) {
         return jdbc.query("""
                 SELECT * FROM asignatura
@@ -147,13 +94,6 @@ public class SubjectRepository {
                 new MapSqlParameterSource("periodo", periodoAcademico), ASIGNATURA_MAPPER);
     }
 
-    /**
-     * Inserta una asignatura. Se ignoran el identificador y la fecha de creación del modelo recibido.
-     *
-     * @author Diego Luna
-     * @param asignatura datos de la asignatura a crear, incluido su estado activo
-     * @return asignatura creada
-     */
     public Asignatura create(Asignatura asignatura) {
         return jdbc.queryForObject("""
                 INSERT INTO asignatura (nombre, codigo, docente, aula, dias, hora_inicio, hora_fin,
@@ -163,13 +103,6 @@ public class SubjectRepository {
                 """, params(asignatura), ASIGNATURA_MAPPER);
     }
 
-    /**
-     * Actualiza los datos de una asignatura, activa o no, incluido su estado de vigencia.
-     *
-     * @author Diego Luna
-     * @param asignatura asignatura con los nuevos datos, identificada por su id
-     * @return asignatura actualizada
-     */
     public Asignatura update(Asignatura asignatura) {
         return jdbc.queryForObject("""
                 UPDATE asignatura
@@ -181,13 +114,6 @@ public class SubjectRepository {
                 """, params(asignatura).addValue("id", asignatura.id()), ASIGNATURA_MAPPER);
     }
 
-    /**
-     * Desactiva lógicamente una asignatura.
-     *
-     * @author Diego Luna
-     * @param id identificador de la asignatura
-     * @return número de filas afectadas
-     */
     public int deactivate(UUID id) {
         return jdbc.update("UPDATE asignatura SET activo = FALSE WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id));

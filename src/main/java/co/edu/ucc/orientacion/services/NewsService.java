@@ -23,11 +23,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-/**
- * Lógica de negocio de noticias y eventos institucionales, con su flujo de publicación.
- *
- * @author Gabriela Zabaleta
- */
 @Service
 public class NewsService {
 
@@ -42,27 +37,11 @@ public class NewsService {
     private final NewsRepository newsRepository;
     private final EventRepository eventRepository;
 
-    /**
-     * Crea el servicio con sus dependencias.
-     *
-     * @author Gabriela Zabaleta
-     * @param newsRepository repositorio de noticias
-     * @param eventRepository repositorio de eventos
-     */
     public NewsService(NewsRepository newsRepository, EventRepository eventRepository) {
         this.newsRepository = newsRepository;
         this.eventRepository = eventRepository;
     }
 
-    /**
-     * Lista noticias publicadas de forma paginada, 10 por página.
-     *
-     * @author Gabriela Zabaleta
-     * @param category categoría de la noticia; null para todas
-     * @param page número de página, iniciando en 1
-     * @return página de noticias resumidas, de la más reciente a la más antigua
-     * @throws BadRequestException cuando la página es menor que 1
-     */
     public PageResponse<NewsSummaryResponse> listNews(String category, int page) {
         validatePage(page);
         String categoria = TextUtils.normalizeKey(category);
@@ -73,16 +52,6 @@ public class NewsService {
         return PageResponse.of(content, page, PAGE_SIZE, newsRepository.countPublished(categoria));
     }
 
-    /**
-     * Obtiene una noticia. Las consultas públicas solo ven noticias publicadas; los
-     * administradores también ven borradores.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador de la noticia
-     * @param includeDrafts true si el solicitante es administrador
-     * @return noticia encontrada
-     * @throws NotFoundException cuando la noticia no existe o no es visible para el solicitante
-     */
     public Noticia getNews(UUID id, boolean includeDrafts) {
         return newsRepository.findById(id)
                 .filter(noticia -> PUBLISHED.equals(noticia.estado())
@@ -90,17 +59,6 @@ public class NewsService {
                 .orElseThrow(() -> new NotFoundException("Noticia no encontrada"));
     }
 
-    /**
-     * Lista noticias de cualquier estado, incluidos borradores y archivadas, para la
-     * administración. Se pagina de a 10.
-     *
-     * @author Gabriela Zabaleta
-     * @param category categoría de la noticia; null para todas
-     * @param status BORRADOR, PUBLICADO o ARCHIVADO; null para todos los estados
-     * @param page número de página, iniciando en 1
-     * @return página de noticias completas, de la más reciente a la más antigua
-     * @throws BadRequestException cuando la página o el estado son inválidos
-     */
     public PageResponse<Noticia> listNewsAdmin(String category, String status, int page) {
         validatePage(page);
         String estado = TextUtils.normalizeKey(status);
@@ -115,31 +73,12 @@ public class NewsService {
                 newsRepository.countAllAdmin(categoria, estado));
     }
 
-    /**
-     * Crea una noticia como borrador o directamente publicada.
-     *
-     * @author Gabriela Zabaleta
-     * @param authorId administrador que crea la noticia
-     * @param request datos de la noticia
-     * @return noticia creada
-     */
     public Noticia createNews(UUID authorId, NewsRequest request) {
         String estado = request.estado() == null ? DRAFT : request.estado().toUpperCase(Locale.ROOT);
         LocalDateTime publishedAt = PUBLISHED.equals(estado) ? LocalDateTime.now() : null;
         return newsRepository.create(toNoticia(null, authorId, estado, publishedAt, request));
     }
 
-    /**
-     * Actualiza una noticia siguiendo el flujo BORRADOR a PUBLICADO. Una noticia publicada no
-     * puede volver a borrador.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador de la noticia
-     * @param request nuevos datos de la noticia
-     * @return noticia actualizada
-     * @throws NotFoundException cuando la noticia no existe o está archivada
-     * @throws ConflictException cuando se intenta devolver a borrador una noticia publicada
-     */
     @Transactional
     public Noticia updateNews(UUID id, NewsRequest request) {
         Noticia current = newsRepository.findById(id)
@@ -156,31 +95,12 @@ public class NewsService {
         return newsRepository.update(toNoticia(id, current.creadoPor(), target, publishedAt, request), now);
     }
 
-    /**
-     * Archiva lógicamente una noticia.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador de la noticia
-     * @throws NotFoundException cuando la noticia no existe o ya está archivada
-     */
     public void deleteNews(UUID id) {
         if (newsRepository.archive(id, LocalDateTime.now()) == 0) {
             throw new NotFoundException("Noticia no encontrada");
         }
     }
 
-    /**
-     * Lista eventos activos cuya fecha es hoy o futura, de forma paginada, 10 por página.
-     * Antes de consultar marca como CONCLUIDO los eventos pasados.
-     *
-     * @author Gabriela Zabaleta
-     * @param category categoría del evento; null para todas
-     * @param from fecha mínima; si es anterior a hoy se usa hoy
-     * @param to fecha máxima inclusiva; null para no acotar
-     * @param page número de página, iniciando en 1
-     * @return página de eventos ordenados por fecha
-     * @throws BadRequestException cuando la página es menor que 1 o el rango de fechas es inválido
-     */
     public PageResponse<Evento> listEvents(String category, LocalDate from, LocalDate to, int page) {
         validatePage(page);
         if (from != null && to != null && to.isBefore(from)) {
@@ -196,17 +116,6 @@ public class NewsService {
         return PageResponse.of(content, page, PAGE_SIZE, eventRepository.countUpcoming(categoria, lowerBound, upperBound));
     }
 
-    /**
-     * Lista eventos de cualquier estado y fecha, incluidos concluidos y cancelados, para la
-     * administración. Antes de consultar marca como CONCLUIDO los eventos pasados.
-     *
-     * @author Gabriela Zabaleta
-     * @param category categoría del evento; null para todas
-     * @param status ACTIVO, CONCLUIDO o CANCELADO; null para todos los estados
-     * @param page número de página, iniciando en 1
-     * @return página de eventos, del más reciente al más antiguo
-     * @throws BadRequestException cuando la página o el estado son inválidos
-     */
     public PageResponse<Evento> listEventsAdmin(String category, String status, int page) {
         validatePage(page);
         String estado = TextUtils.normalizeKey(status);
@@ -222,32 +131,11 @@ public class NewsService {
                 eventRepository.countAllAdmin(categoria, estado));
     }
 
-    /**
-     * Crea un evento activo.
-     *
-     * @author Gabriela Zabaleta
-     * @param authorId administrador que crea el evento
-     * @param request datos del evento
-     * @return evento creado
-     * @throws UnprocessableEntityException cuando la fecha del evento es anterior a hoy
-     */
     public Evento createEvent(UUID authorId, EventRequest request) {
         ensureNotPast(request.fechaHora());
         return eventRepository.create(toEvento(null, authorId, ACTIVE, request));
     }
 
-    /**
-     * Actualiza un evento. Un evento concluido no puede modificarse; uno cancelado puede
-     * reactivarse con una fecha vigente.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador del evento
-     * @param request nuevos datos del evento
-     * @return evento actualizado
-     * @throws NotFoundException cuando el evento no existe
-     * @throws ConflictException cuando el evento ya concluyó
-     * @throws UnprocessableEntityException cuando un evento activo tiene fecha anterior a hoy
-     */
     @Transactional
     public Evento updateEvent(UUID id, EventRequest request) {
         Evento current = eventRepository.findById(id)
@@ -262,25 +150,12 @@ public class NewsService {
         return eventRepository.update(toEvento(id, current.creadoPor(), target, request));
     }
 
-    /**
-     * Cancela lógicamente un evento activo. Los eventos concluidos no se modifican.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador del evento
-     * @throws NotFoundException cuando no existe un evento activo con ese identificador
-     */
     public void deleteEvent(UUID id) {
         if (eventRepository.cancel(id) == 0) {
             throw new NotFoundException("Evento activo no encontrado");
         }
     }
 
-    /**
-     * Marca como CONCLUIDO los eventos activos con fecha anterior a hoy. Se ejecuta a diario
-     * y antes de cada consulta pública de eventos. Los eventos nunca se eliminan.
-     *
-     * @author Gabriela Zabaleta
-     */
     @Scheduled(cron = "0 5 0 * * *")
     public void concludePastEvents() {
         eventRepository.concludePast(LocalDate.now().atStartOfDay());

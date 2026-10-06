@@ -14,11 +14,6 @@ import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
 
-/**
- * Lógica de negocio de la infraestructura del campus: catálogo, búsqueda y administración de espacios.
- *
- * @author Diego Luna
- */
 @Service
 public class CampusService {
 
@@ -29,24 +24,10 @@ public class CampusService {
 
     private final SpaceRepository spaceRepository;
 
-    /**
-     * Crea el servicio con el repositorio de espacios.
-     *
-     * @author Diego Luna
-     * @param spaceRepository repositorio de espacios
-     */
     public CampusService(SpaceRepository spaceRepository) {
         this.spaceRepository = spaceRepository;
     }
 
-    /**
-     * Lista los espacios activos del campus, opcionalmente filtrados por categoría.
-     *
-     * @author Diego Luna
-     * @param category categoría del espacio; null para todas
-     * @return espacios activos ordenados por nombre
-     * @throws BadRequestException cuando la categoría no es válida
-     */
     public List<Espacio> getSpaces(String category) {
         String normalized = TextUtils.normalizeKey(category);
         if (normalized != null) {
@@ -55,14 +36,6 @@ public class CampusService {
         return spaceRepository.findActive(normalized);
     }
 
-    /**
-     * Busca espacios activos por nombre o código sin distinguir mayúsculas.
-     *
-     * @author Diego Luna
-     * @param query texto buscado, de al menos 2 caracteres; la búsqueda ignora tildes y mayúsculas
-     * @return espacios que coinciden con la búsqueda
-     * @throws BadRequestException cuando el texto tiene menos de 2 caracteres
-     */
     public List<Espacio> searchSpaces(String query) {
         if (query == null || query.trim().length() < MIN_SEARCH_LENGTH) {
             throw new BadRequestException(
@@ -71,15 +44,6 @@ public class CampusService {
         return spaceRepository.search(TextUtils.likePattern(query));
     }
 
-    /**
-     * Crea un espacio verificando que su código sea único.
-     *
-     * @author Diego Luna
-     * @param request datos del espacio
-     * @return espacio creado
-     * @throws BadRequestException cuando la categoría no es válida
-     * @throws ConflictException cuando el código ya está en uso
-     */
     @Transactional
     public Espacio createSpace(SpaceRequest request) {
         Espacio candidate = toEspacio(null, request, true);
@@ -87,14 +51,6 @@ public class CampusService {
         return spaceRepository.create(candidate);
     }
 
-    /**
-     * Lista todos los espacios, activos e inactivos, para la administración.
-     *
-     * @author Diego Luna
-     * @param category categoría del espacio; null para todas
-     * @return espacios ordenados por estado y nombre
-     * @throws BadRequestException cuando la categoría no es válida
-     */
     public List<Espacio> listAllSpaces(String category) {
         String normalized = TextUtils.normalizeKey(category);
         if (normalized != null) {
@@ -103,18 +59,6 @@ public class CampusService {
         return spaceRepository.findAll(normalized);
     }
 
-    /**
-     * Actualiza un espacio, esté activo o no, verificando la unicidad de su código. El campo
-     * activo de la solicitud permite ocultar o volver a mostrar el espacio.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @param request nuevos datos del espacio
-     * @return espacio actualizado
-     * @throws NotFoundException cuando el espacio no existe
-     * @throws BadRequestException cuando la categoría no es válida
-     * @throws ConflictException cuando el código ya está en uso por otro espacio
-     */
     @Transactional
     public Espacio updateSpace(UUID id, SpaceRequest request) {
         Espacio current = spaceRepository.findById(id).orElseThrow(() -> new NotFoundException("Espacio no encontrado"));
@@ -123,13 +67,6 @@ public class CampusService {
         return spaceRepository.update(candidate);
     }
 
-    /**
-     * Desactiva lógicamente un espacio.
-     *
-     * @author Diego Luna
-     * @param id identificador del espacio
-     * @throws NotFoundException cuando el espacio no existe o ya está inactivo
-     */
     public void deleteSpace(UUID id) {
         if (spaceRepository.deactivate(id) == 0) {
             throw new NotFoundException("Espacio no encontrado");

@@ -4,13 +4,6 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/**
- * Solicitud para establecer una nueva contraseña usando un token de recuperación.
- *
- * @author Doris Arzuaga
- * @param token token de recuperación recibido por el usuario
- * @param nuevaContrasena nueva contraseña en texto plano
- */
 public record PasswordResetRequest(
         @NotBlank String token,
         @NotBlank

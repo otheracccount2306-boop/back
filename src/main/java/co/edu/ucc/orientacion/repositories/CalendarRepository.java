@@ -12,11 +12,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Acceso a datos del calendario académico institucional.
- *
- * @author Diego Luna
- */
 @Repository
 public class CalendarRepository {
 
@@ -32,23 +27,10 @@ public class CalendarRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Diego Luna
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public CalendarRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Lista los eventos activos del calendario, opcionalmente filtrados por categoría.
-     *
-     * @author Diego Luna
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @return eventos ordenados por fecha de inicio
-     */
     public List<EventoCalendario> findActive(String categoria) {
         return jdbc.query("""
                 SELECT * FROM evento_calendario
@@ -59,26 +41,11 @@ public class CalendarRepository {
                 new MapSqlParameterSource("categoria", categoria), CALENDAR_MAPPER);
     }
 
-    /**
-     * Busca un evento activo del calendario por su identificador.
-     *
-     * @author Diego Luna
-     * @param id identificador del evento
-     * @return evento encontrado o vacío
-     */
     public Optional<EventoCalendario> findActiveById(UUID id) {
         return jdbc.query("SELECT * FROM evento_calendario WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id), CALENDAR_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Inserta un evento del calendario. Se ignoran el identificador, el estado y la fecha de
-     * creación del modelo recibido.
-     *
-     * @author Diego Luna
-     * @param evento datos del evento a crear
-     * @return evento creado
-     */
     public EventoCalendario create(EventoCalendario evento) {
         return jdbc.queryForObject("""
                 INSERT INTO evento_calendario (nombre, descripcion, categoria, fecha_inicio, fecha_fin)
@@ -87,13 +54,6 @@ public class CalendarRepository {
                 """, params(evento), CALENDAR_MAPPER);
     }
 
-    /**
-     * Actualiza un evento activo del calendario.
-     *
-     * @author Diego Luna
-     * @param evento evento con los nuevos datos, identificado por su id
-     * @return evento actualizado
-     */
     public EventoCalendario update(EventoCalendario evento) {
         return jdbc.queryForObject("""
                 UPDATE evento_calendario
@@ -104,13 +64,6 @@ public class CalendarRepository {
                 """, params(evento).addValue("id", evento.id()), CALENDAR_MAPPER);
     }
 
-    /**
-     * Desactiva lógicamente un evento del calendario.
-     *
-     * @author Diego Luna
-     * @param id identificador del evento
-     * @return número de filas afectadas
-     */
     public int deactivate(UUID id) {
         return jdbc.update("UPDATE evento_calendario SET activo = FALSE WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id));

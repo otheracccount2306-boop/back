@@ -21,112 +21,41 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import java.util.List;
 
-/**
- * Manejo centralizado de excepciones. Traduce cada excepción a una respuesta ApiResponse
- * con el código HTTP correspondiente.
- *
- * @author Doris Arzuaga
- * @author Diego Luna
- * @author Gabriela Zabaleta
- */
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
     private static final Logger LOG = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
-    /**
-     * Maneja conflictos de datos.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 409
-     */
     @ExceptionHandler(ConflictException.class)
     public ResponseEntity<ApiResponse> handleConflict(ConflictException ex) {
         return build(HttpStatus.CONFLICT, ex.getMessage());
     }
 
-    /**
-     * Maneja fallos de autenticación.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 401
-     */
     @ExceptionHandler({UnauthorizedException.class, AuthenticationException.class})
     public ResponseEntity<ApiResponse> handleUnauthorized(RuntimeException ex) {
         return build(HttpStatus.UNAUTHORIZED, ex.getMessage());
     }
 
-    /**
-     * Maneja recursos no encontrados.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 404
-     */
     @ExceptionHandler(NotFoundException.class)
     public ResponseEntity<ApiResponse> handleNotFound(NotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, ex.getMessage());
     }
 
-    /**
-     * Maneja solicitudes con datos inválidos.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 400
-     */
     @ExceptionHandler(BadRequestException.class)
     public ResponseEntity<ApiResponse> handleBadRequest(BadRequestException ex) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
-    /**
-     * Maneja acciones prohibidas para el usuario autenticado.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 403
-     */
     @ExceptionHandler({ForbiddenException.class, AccessDeniedException.class})
     public ResponseEntity<ApiResponse> handleForbidden(RuntimeException ex) {
         return build(HttpStatus.FORBIDDEN, ex.getMessage());
     }
 
-    /**
-     * Maneja reglas de negocio incumplidas.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 422
-     */
     @ExceptionHandler(UnprocessableEntityException.class)
     public ResponseEntity<ApiResponse> handleUnprocessable(UnprocessableEntityException ex) {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, ex.getMessage());
     }
 
-    /**
-     * Maneja fallos de Bean Validation sobre el cuerpo de la solicitud.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 400 con el detalle de los campos inválidos
-     */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse> handleValidation(MethodArgumentNotValidException ex) {
         List<String> errors = ex.getBindingResult().getFieldErrors().stream()
@@ -136,15 +65,6 @@ public class GlobalExceptionHandler {
         return validationResponse(errors);
     }
 
-    /**
-     * Maneja fallos de Bean Validation ejecutados de forma programática.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 400 con el detalle de los campos inválidos
-     */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ApiResponse> handleConstraintViolation(ConstraintViolationException ex) {
         List<String> errors = ex.getConstraintViolations().stream()
@@ -154,15 +74,6 @@ public class GlobalExceptionHandler {
         return validationResponse(errors);
     }
 
-    /**
-     * Maneja cuerpos JSON ilegibles y parámetros faltantes o con tipo incorrecto.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 400
-     */
     @ExceptionHandler({
             HttpMessageNotReadableException.class,
             MethodArgumentTypeMismatchException.class,
@@ -171,31 +82,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Solicitud mal formada o con parámetros inválidos");
     }
 
-    /**
-     * Maneja violaciones de integridad de la base de datos, incluidas las claves duplicadas.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP 409
-     */
     @ExceptionHandler({DuplicateKeyException.class, DataIntegrityViolationException.class})
     public ResponseEntity<ApiResponse> handleIntegrity(RuntimeException ex) {
         LOG.warn("Violación de integridad: {}", ex.getMessage());
         return build(HttpStatus.CONFLICT, "La operación viola una restricción de integridad de los datos");
     }
 
-    /**
-     * Maneja cualquier otra excepción. Las excepciones de Spring MVC conservan su código HTTP
-     * y el resto responde HTTP 500 sin exponer detalles internos.
-     *
-     * @author Doris Arzuaga
-     * @author Diego Luna
-     * @author Gabriela Zabaleta
-     * @param ex excepción lanzada
-     * @return respuesta HTTP con el código correspondiente
-     */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse> handleUnexpected(Exception ex) {
         if (ex instanceof ErrorResponse errorResponse) {

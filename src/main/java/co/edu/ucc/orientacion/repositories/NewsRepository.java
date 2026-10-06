@@ -11,11 +11,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Acceso a datos de noticias institucionales.
- *
- * @author Gabriela Zabaleta
- */
 @Repository
 public class NewsRepository {
 
@@ -34,25 +29,10 @@ public class NewsRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Gabriela Zabaleta
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public NewsRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Lista noticias en estado PUBLICADO, de la más reciente a la más antigua.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param limit cantidad máxima de resultados
-     * @param offset desplazamiento inicial
-     * @return noticias de la página solicitada
-     */
     public List<Noticia> findPublished(String categoria, int limit, int offset) {
         return jdbc.query("""
                 SELECT * FROM noticia
@@ -68,13 +48,6 @@ public class NewsRepository {
                 NOTICIA_MAPPER);
     }
 
-    /**
-     * Cuenta las noticias en estado PUBLICADO.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @return total de noticias publicadas
-     */
     public long countPublished(String categoria) {
         Long total = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM noticia
@@ -85,16 +58,6 @@ public class NewsRepository {
         return total == null ? 0 : total;
     }
 
-    /**
-     * Lista noticias de cualquier estado para la administración, de la más reciente a la más antigua.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param estado BORRADOR, PUBLICADO o ARCHIVADO; null para todos los estados
-     * @param limit cantidad máxima de resultados
-     * @param offset desplazamiento inicial
-     * @return noticias de la página solicitada
-     */
     public List<Noticia> findAllAdmin(String categoria, String estado, int limit, int offset) {
         return jdbc.query("""
                 SELECT * FROM noticia
@@ -111,14 +74,6 @@ public class NewsRepository {
                 NOTICIA_MAPPER);
     }
 
-    /**
-     * Cuenta las noticias de cualquier estado para la administración.
-     *
-     * @author Gabriela Zabaleta
-     * @param categoria categoría normalizada, o null para no filtrar
-     * @param estado BORRADOR, PUBLICADO o ARCHIVADO; null para todos los estados
-     * @return total de noticias que cumplen el filtro
-     */
     public long countAllAdmin(String categoria, String estado) {
         Long total = jdbc.queryForObject("""
                 SELECT COUNT(*) FROM noticia
@@ -130,25 +85,11 @@ public class NewsRepository {
         return total == null ? 0 : total;
     }
 
-    /**
-     * Busca una noticia por su identificador sin importar su estado.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador de la noticia
-     * @return noticia encontrada o vacío
-     */
     public Optional<Noticia> findById(UUID id) {
         return jdbc.query("SELECT * FROM noticia WHERE id = :id",
                 new MapSqlParameterSource("id", id), NOTICIA_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Inserta una noticia con los datos del modelo recibido.
-     *
-     * @author Gabriela Zabaleta
-     * @param noticia datos de la noticia a crear, incluidos estado, fecha de publicación y autor
-     * @return noticia creada
-     */
     public Noticia create(Noticia noticia) {
         return jdbc.queryForObject("""
                 INSERT INTO noticia (titulo, resumen, contenido, categoria, imagen_url, estado, publicado_en, creado_por)
@@ -157,14 +98,6 @@ public class NewsRepository {
                 """, params(noticia).addValue("creadoPor", noticia.creadoPor()), NOTICIA_MAPPER);
     }
 
-    /**
-     * Actualiza el contenido, el estado y la fecha de publicación de una noticia.
-     *
-     * @author Gabriela Zabaleta
-     * @param noticia noticia con los nuevos datos, identificada por su id
-     * @param now fecha de actualización
-     * @return noticia actualizada
-     */
     public Noticia update(Noticia noticia, LocalDateTime now) {
         return jdbc.queryForObject("""
                 UPDATE noticia
@@ -175,14 +108,6 @@ public class NewsRepository {
                 """, params(noticia).addValue("id", noticia.id()).addValue("now", now), NOTICIA_MAPPER);
     }
 
-    /**
-     * Archiva lógicamente una noticia cambiando su estado a ARCHIVADO.
-     *
-     * @author Gabriela Zabaleta
-     * @param id identificador de la noticia
-     * @param now fecha de actualización
-     * @return número de filas afectadas
-     */
     public int archive(UUID id, LocalDateTime now) {
         return jdbc.update("""
                 UPDATE noticia SET estado = 'ARCHIVADO', actualizado_en = :now

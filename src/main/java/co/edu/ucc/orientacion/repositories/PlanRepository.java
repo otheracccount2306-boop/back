@@ -17,11 +17,6 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-/**
- * Acceso a datos de los planos del campus sobre los que se dibujan los espacios.
- *
- * @author Diego Luna
- */
 @Repository
 public class PlanRepository {
 
@@ -52,7 +47,6 @@ public class PlanRepository {
             rs.getBoolean("con_navegacion"),
             rs.getObject("actualizado_en", LocalDateTime.class));
 
-    /** Listado sin la columna imagen, que es pesada; cuenta los espacios dibujados de cada plano. */
     private static final String SUMMARY_SELECT = """
             SELECT p.id, p.nombre, p.edificio, p.piso, p.ancho, p.alto, p.activo, p.actualizado_en,
                    (p.navegacion IS NOT NULL) AS con_navegacion,
@@ -67,58 +61,24 @@ public class PlanRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Diego Luna
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public PlanRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Lista los planos sin su imagen.
-     *
-     * @author Diego Luna
-     * @param onlyActive true para los planos visibles a los estudiantes; false para todos
-     * @return planos ordenados por estado, edificio, piso y nombre
-     */
     public List<PlanSummaryResponse> findSummaries(boolean onlyActive) {
         return jdbc.query(SUMMARY_SELECT, new MapSqlParameterSource("onlyActive", onlyActive), SUMMARY_MAPPER);
     }
 
-    /**
-     * Busca un plano por su identificador sin importar si está activo.
-     *
-     * @author Diego Luna
-     * @param id identificador del plano
-     * @return plano con su imagen, o vacío
-     */
     public Optional<Plano> findById(UUID id) {
         return jdbc.query("SELECT * FROM plano WHERE id = :id",
                 new MapSqlParameterSource("id", id), PLANO_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Busca un plano activo por su identificador.
-     *
-     * @author Diego Luna
-     * @param id identificador del plano
-     * @return plano con su imagen, o vacío si no existe o está inactivo
-     */
     public Optional<Plano> findActiveById(UUID id) {
         return jdbc.query("SELECT * FROM plano WHERE id = :id AND activo = TRUE",
                 new MapSqlParameterSource("id", id), PLANO_MAPPER).stream().findFirst();
     }
 
-    /**
-     * Inserta un plano. Se ignoran el identificador y las fechas del modelo recibido.
-     *
-     * @author Diego Luna
-     * @param plano datos del plano
-     * @return plano creado
-     */
     public Plano create(Plano plano) {
         return jdbc.queryForObject("""
                 INSERT INTO plano (nombre, edificio, piso, imagen, ancho, alto, activo)
@@ -127,13 +87,6 @@ public class PlanRepository {
                 """, params(plano), PLANO_MAPPER);
     }
 
-    /**
-     * Actualiza un plano, incluida su imagen y su estado.
-     *
-     * @author Diego Luna
-     * @param plano plano con los nuevos datos, identificado por su id
-     * @return plano actualizado
-     */
     public Plano update(Plano plano) {
         return jdbc.queryForObject("""
                 UPDATE plano
@@ -144,37 +97,16 @@ public class PlanRepository {
                 """, params(plano).addValue("id", plano.id()), PLANO_MAPPER);
     }
 
-    /**
-     * Marca el plano como modificado. Se llama cada vez que cambia un polígono, para que la app
-     * sepa que su copia sin conexión quedó desactualizada.
-     *
-     * @author Diego Luna
-     * @param id identificador del plano
-     */
     public void touch(UUID id) {
         jdbc.update("UPDATE plano SET actualizado_en = NOW() WHERE id = :id", new MapSqlParameterSource("id", id));
     }
 
-    /**
-     * Desactiva lógicamente un plano.
-     *
-     * @author Diego Luna
-     * @param id identificador del plano
-     * @return número de filas afectadas
-     */
     public int deactivate(UUID id) {
         return jdbc.update("""
                 UPDATE plano SET activo = FALSE, actualizado_en = NOW() WHERE id = :id AND activo = TRUE
                 """, new MapSqlParameterSource("id", id));
     }
 
-    /**
-     * Cuenta los espacios dibujados sobre un plano, activos o no.
-     *
-     * @author Diego Luna
-     * @param id identificador del plano
-     * @return número de espacios con polígono
-     */
     public int countShapes(UUID id) {
         Integer count = jdbc.queryForObject(
                 "SELECT COUNT(*) FROM espacio WHERE plano_id = :id AND geometria IS NOT NULL",
@@ -182,14 +114,6 @@ public class PlanRepository {
         return count == null ? 0 : count;
     }
 
-    /**
-     * Borra un plano de la base de forma definitiva. Antes hay que quitar los polígonos de sus
-     * espacios (SpaceRepository.clearGeometryByPlan), porque espacio.plano_id lo referencia.
-     *
-     * @author Diego Luna
-     * @param id identificador del plano
-     * @return número de filas borradas
-     */
     public int delete(UUID id) {
         return jdbc.update("DELETE FROM plano WHERE id = :id", new MapSqlParameterSource("id", id));
     }

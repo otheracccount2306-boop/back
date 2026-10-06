@@ -8,18 +8,6 @@ import jakarta.validation.constraints.Size;
 
 import java.time.LocalDateTime;
 
-/**
- * Datos para crear o actualizar un evento institucional.
- *
- * @author Gabriela Zabaleta
- * @param nombre nombre del evento
- * @param descripcion descripción del evento
- * @param categoria categoría del evento
- * @param lugar lugar de realización
- * @param fechaHora fecha y hora del evento, no puede ser anterior a hoy
- * @param cupos cupos disponibles
- * @param estado estado deseado en actualizaciones: ACTIVO o CANCELADO
- */
 public record EventRequest(
         @NotBlank @Size(max = 200) String nombre,
         String descripcion,

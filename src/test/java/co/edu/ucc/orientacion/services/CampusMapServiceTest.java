@@ -40,11 +40,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de la lógica del mapa del campus: validación de polígonos y de imágenes de planos.
- *
- * @author Diego Luna
- */
 @ExtendWith(MockitoExtension.class)
 class CampusMapServiceTest {
 

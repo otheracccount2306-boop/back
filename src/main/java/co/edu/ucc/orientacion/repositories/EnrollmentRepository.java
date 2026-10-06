@@ -11,11 +11,6 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * Acceso a datos de matrículas y del horario de los estudiantes.
- *
- * @author Diego Luna
- */
 @Repository
 public class EnrollmentRepository {
 
@@ -28,25 +23,10 @@ public class EnrollmentRepository {
 
     private final NamedParameterJdbcTemplate jdbc;
 
-    /**
-     * Crea el repositorio con la plantilla JDBC.
-     *
-     * @author Diego Luna
-     * @param jdbc plantilla JDBC con parámetros nombrados
-     */
     public EnrollmentRepository(NamedParameterJdbcTemplate jdbc) {
         this.jdbc = jdbc;
     }
 
-    /**
-     * Obtiene las asignaturas activas en las que está matriculado un estudiante, opcionalmente
-     * filtradas por día de la semana y ordenadas por hora de inicio.
-     *
-     * @author Diego Luna
-     * @param usuarioId identificador del estudiante
-     * @param day día de la semana normalizado, o null para no filtrar
-     * @return asignaturas del horario del estudiante
-     */
     public List<Asignatura> findScheduleByUsuario(UUID usuarioId, String day) {
         return jdbc.query("""
                 SELECT a.* FROM asignatura a
@@ -61,27 +41,11 @@ public class EnrollmentRepository {
                 SubjectRepository.ASIGNATURA_MAPPER);
     }
 
-    /**
-     * Lista las matrículas de un estudiante.
-     *
-     * @author Diego Luna
-     * @param usuarioId identificador del estudiante
-     * @return matrículas del estudiante
-     */
     public List<Matricula> findByUsuario(UUID usuarioId) {
         return jdbc.query("SELECT * FROM matricula WHERE usuario_id = :usuarioId ORDER BY creado_en",
                 new MapSqlParameterSource("usuarioId", usuarioId), MATRICULA_MAPPER);
     }
 
-    /**
-     * Verifica si un estudiante ya está matriculado en una asignatura durante un periodo.
-     *
-     * @author Diego Luna
-     * @param usuarioId identificador del estudiante
-     * @param asignaturaId identificador de la asignatura
-     * @param periodoAcademico periodo académico
-     * @return true si la matrícula ya existe
-     */
     public boolean exists(UUID usuarioId, UUID asignaturaId, String periodoAcademico) {
         Boolean exists = jdbc.queryForObject("""
                 SELECT EXISTS (
@@ -96,15 +60,6 @@ public class EnrollmentRepository {
         return Boolean.TRUE.equals(exists);
     }
 
-    /**
-     * Inserta una matrícula.
-     *
-     * @author Diego Luna
-     * @param usuarioId identificador del estudiante
-     * @param asignaturaId identificador de la asignatura
-     * @param periodoAcademico periodo académico
-     * @return matrícula creada
-     */
     public Matricula save(UUID usuarioId, UUID asignaturaId, String periodoAcademico) {
         return jdbc.queryForObject("""
                 INSERT INTO matricula (usuario_id, asignatura_id, periodo_academico)

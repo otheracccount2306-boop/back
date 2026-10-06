@@ -29,11 +29,6 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-/**
- * Pruebas de la lógica del módulo de servicios institucionales.
- *
- * @author Gabriela Zabaleta
- */
 @ExtendWith(MockitoExtension.class)
 class ServicesServiceTest {
 

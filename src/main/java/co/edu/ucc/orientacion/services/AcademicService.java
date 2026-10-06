@@ -24,12 +24,6 @@ import java.util.Set;
 import java.util.Locale;
 import java.util.UUID;
 
-/**
- * Lógica de negocio del módulo académico: horario del estudiante, calendario institucional
- * y administración de asignaturas y eventos de calendario.
- *
- * @author Diego Luna
- */
 @Service
 public class AcademicService {
 
@@ -41,15 +35,6 @@ public class AcademicService {
     private final CalendarRepository calendarRepository;
     private final SpaceRepository spaceRepository;
 
-    /**
-     * Crea el servicio con sus dependencias.
-     *
-     * @author Diego Luna
-     * @param subjectRepository repositorio de asignaturas
-     * @param enrollmentRepository repositorio de matrículas
-     * @param calendarRepository repositorio del calendario académico
-     * @param spaceRepository repositorio de espacios, para ubicar el aula de cada clase en el mapa
-     */
     public AcademicService(
             SubjectRepository subjectRepository,
             EnrollmentRepository enrollmentRepository,
@@ -61,15 +46,6 @@ public class AcademicService {
         this.spaceRepository = spaceRepository;
     }
 
-    /**
-     * Obtiene el horario del estudiante autenticado, opcionalmente filtrado por día de la semana.
-     *
-     * @author Diego Luna
-     * @param userId identificador del estudiante
-     * @param day día de la semana, por ejemplo LUNES o miércoles; null para todos los días
-     * @return asignaturas del horario ordenadas por hora de inicio
-     * @throws BadRequestException cuando el día no es un día válido de la semana
-     */
     public List<SubjectResponse> getSchedule(UUID userId, String day) {
         String normalizedDay = TextUtils.normalizeKey(day);
         if (normalizedDay != null && !WEEK_DAYS.contains(normalizedDay)) {
@@ -78,13 +54,6 @@ public class AcademicService {
         return withRooms(enrollmentRepository.findScheduleByUsuario(userId, normalizedDay));
     }
 
-    /**
-     * Arma la vista de cada asignatura con el espacio del mapa que corresponde a su aula.
-     *
-     * @author Diego Luna
-     * @param subjects asignaturas
-     * @return asignaturas con espacioId cuando su aula está ubicada en el mapa
-     */
     private List<SubjectResponse> withRooms(List<Asignatura> subjects) {
         boolean anyRoom = subjects.stream().anyMatch(a -> a.aula() != null && !a.aula().isBlank());
         Map<String, UUID> rooms = anyRoom ? indexRooms(spaceRepository.findMappedRooms()) : Map.of();
@@ -100,16 +69,6 @@ public class AcademicService {
         return withRooms(List.of(subject)).get(0);
     }
 
-    /**
-     * Índice para reconocer el aula de una clase: se puede escribir el código del espacio
-     * (AU-2-101) o su nombre (Aula 2 101), sin importar mayúsculas, tildes ni separadores. El
-     * código manda sobre el nombre, y un nombre repetido en varios espacios no se usa porque no
-     * se sabría cuál es.
-     *
-     * @author Diego Luna
-     * @param rooms espacios ubicados en el mapa
-     * @return aula normalizada → identificador del espacio
-     */
     static Map<String, UUID> indexRooms(List<SpaceRepository.MappedRoom> rooms) {
         Map<String, UUID> byCode = new HashMap<>();
         Map<String, UUID> byName = new HashMap<>();
@@ -129,26 +88,10 @@ public class AcademicService {
         return byName;
     }
 
-    /**
-     * Obtiene el calendario académico institucional, opcionalmente filtrado por categoría.
-     *
-     * @author Diego Luna
-     * @param category categoría del evento; null para todas
-     * @return eventos activos ordenados por fecha de inicio
-     */
     public List<EventoCalendario> getCalendar(String category) {
         return calendarRepository.findActive(TextUtils.normalizeKey(category));
     }
 
-    /**
-     * Crea una asignatura verificando que su código sea único y que no genere conflicto de aula.
-     *
-     * @author Diego Luna
-     * @param request datos de la asignatura
-     * @return asignatura creada
-     * @throws BadRequestException cuando los días u horas son inválidos
-     * @throws ConflictException cuando el código ya existe o el aula está ocupada en ese horario
-     */
     @Transactional
     public SubjectResponse createSubject(SubjectRequest request) {
         Asignatura candidate = toAsignatura(null, request, true);
@@ -159,30 +102,11 @@ public class AcademicService {
         return withRoom(subjectRepository.create(candidate));
     }
 
-    /**
-     * Lista las asignaturas, activas e inactivas, para la administración.
-     *
-     * @author Diego Luna
-     * @param period periodo académico exacto, por ejemplo 2026-1; null para todos
-     * @return asignaturas ordenadas por periodo descendente, estado y nombre
-     */
     public List<SubjectResponse> listSubjects(String period) {
         String normalized = period == null || period.isBlank() ? null : period.trim();
         return withRooms(subjectRepository.findAll(normalized));
     }
 
-    /**
-     * Actualiza una asignatura, esté activa o no, verificando unicidad de código y, si queda
-     * activa, conflictos de aula. El campo activo de la solicitud permite ocultarla o reactivarla.
-     *
-     * @author Diego Luna
-     * @param id identificador de la asignatura
-     * @param request nuevos datos de la asignatura
-     * @return asignatura actualizada
-     * @throws NotFoundException cuando la asignatura no existe
-     * @throws BadRequestException cuando los días u horas son inválidos
-     * @throws ConflictException cuando el código ya existe o el aula está ocupada en ese horario
-     */
     @Transactional
     public SubjectResponse updateSubject(UUID id, SubjectRequest request) {
         Asignatura current = subjectRepository.findById(id)
@@ -195,41 +119,16 @@ public class AcademicService {
         return withRoom(subjectRepository.update(candidate));
     }
 
-    /**
-     * Desactiva lógicamente una asignatura.
-     *
-     * @author Diego Luna
-     * @param id identificador de la asignatura
-     * @throws NotFoundException cuando la asignatura no existe o ya está inactiva
-     */
     public void deleteSubject(UUID id) {
         if (subjectRepository.deactivate(id) == 0) {
             throw new NotFoundException("Asignatura no encontrada");
         }
     }
 
-    /**
-     * Crea un evento del calendario académico.
-     *
-     * @author Diego Luna
-     * @param request datos del evento
-     * @return evento creado
-     * @throws BadRequestException cuando la fecha de fin es anterior a la de inicio
-     */
     public EventoCalendario createCalendarEvent(CalendarEventRequest request) {
         return calendarRepository.create(toEvento(null, request));
     }
 
-    /**
-     * Actualiza un evento activo del calendario académico.
-     *
-     * @author Diego Luna
-     * @param id identificador del evento
-     * @param request nuevos datos del evento
-     * @return evento actualizado
-     * @throws NotFoundException cuando el evento no existe o está inactivo
-     * @throws BadRequestException cuando la fecha de fin es anterior a la de inicio
-     */
     @Transactional
     public EventoCalendario updateCalendarEvent(UUID id, CalendarEventRequest request) {
         calendarRepository.findActiveById(id)
@@ -237,13 +136,6 @@ public class AcademicService {
         return calendarRepository.update(toEvento(id, request));
     }
 
-    /**
-     * Desactiva lógicamente un evento del calendario académico.
-     *
-     * @author Diego Luna
-     * @param id identificador del evento
-     * @throws NotFoundException cuando el evento no existe o ya está inactivo
-     */
     public void deleteCalendarEvent(UUID id) {
         if (calendarRepository.deactivate(id) == 0) {
             throw new NotFoundException("Evento de calendario no encontrado");

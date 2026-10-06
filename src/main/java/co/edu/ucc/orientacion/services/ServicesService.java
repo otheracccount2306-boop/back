@@ -23,12 +23,6 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 
-/**
- * Lógica de negocio de servicios institucionales: bienestar, directorio de dependencias y
- * preguntas frecuentes, con su administración.
- *
- * @author Gabriela Zabaleta
- */
 @Service
 public class ServicesService {
 
@@ -44,15 +38,6 @@ public class ServicesService {
     private final ObjectMapper objectMapper;
     private final Validator validator;
 
-    /**
-     * Crea el servicio con sus dependencias.
-     *
-     * @author Gabriela Zabaleta
-     * @param serviceRepository repositorio de servicios
-     * @param faqRepository repositorio de preguntas frecuentes
-     * @param objectMapper conversor de JSON a DTO
-     * @param validator validador de Bean Validation
-     */
     public ServicesService(
             ServiceRepository serviceRepository,
             FaqRepository faqRepository,
@@ -64,14 +49,6 @@ public class ServicesService {
         this.validator = validator;
     }
 
-    /**
-     * Lista los servicios de bienestar activos, opcionalmente filtrados por categoría.
-     *
-     * @author Gabriela Zabaleta
-     * @param category PSICOLOGIA, SALUD, DEPORTE, CULTURA, PASTORAL o BECAS; null para todas
-     * @return servicios de bienestar ordenados por nombre
-     * @throws BadRequestException cuando la categoría no es válida
-     */
     public List<Servicio> getWellbeing(String category) {
         String normalized = TextUtils.normalizeKey(category);
         if (normalized != null) {
@@ -80,40 +57,14 @@ public class ServicesService {
         return serviceRepository.search(WELLBEING_CATEGORIES, normalized, null);
     }
 
-    /**
-     * Busca dependencias del directorio por nombre sin distinguir mayúsculas.
-     *
-     * @author Gabriela Zabaleta
-     * @param search texto contenido en el nombre; null para listar todas; la búsqueda ignora tildes y mayúsculas
-     * @return dependencias ordenadas por nombre
-     */
     public List<Servicio> getDepartments(String search) {
         return serviceRepository.search(List.of(DEPARTMENT_CATEGORY), null, TextUtils.likePattern(search));
     }
 
-    /**
-     * Busca preguntas frecuentes por categoría y palabra clave.
-     *
-     * @author Gabriela Zabaleta
-     * @param category categoría de la pregunta; null para todas
-     * @param search palabra clave contenida en la pregunta o la respuesta; null para no filtrar; la búsqueda ignora tildes y mayúsculas
-     * @return preguntas ordenadas por frecuencia descendente
-     */
     public List<Faq> getFaq(String category, String search) {
         return faqRepository.search(TextUtils.normalizeKey(category), TextUtils.likePattern(search));
     }
 
-    /**
-     * Crea un servicio de bienestar, una dependencia del directorio o una pregunta frecuente
-     * según el tipo indicado.
-     *
-     * @author Gabriela Zabaleta
-     * @param type tipo de recurso: wellbeing, departments o faq
-     * @param body cuerpo JSON de la solicitud
-     * @return recurso creado
-     * @throws BadRequestException cuando el tipo o el cuerpo son inválidos
-     * @throws ConstraintViolationException cuando el cuerpo incumple las validaciones del DTO
-     */
     @Transactional
     public Object create(String type, JsonNode body) {
         ServiceType serviceType = resolveType(type);
@@ -123,15 +74,6 @@ public class ServicesService {
         return serviceRepository.create(toServicio(null, serviceType, parse(body, ServiceRequest.class), true));
     }
 
-    /**
-     * Lista los recursos de un tipo incluyendo los inactivos, para la administración.
-     *
-     * @author Gabriela Zabaleta
-     * @param type tipo de recurso: wellbeing, departments o faq
-     * @param category categoría a filtrar; null para todas
-     * @return servicios o preguntas frecuentes de cualquier estado
-     * @throws BadRequestException cuando el tipo es inválido
-     */
     public List<?> listAll(String type, String category) {
         ServiceType serviceType = resolveType(type);
         String normalized = TextUtils.normalizeKey(category);
@@ -147,19 +89,6 @@ public class ServicesService {
         };
     }
 
-    /**
-     * Actualiza un servicio de bienestar, una dependencia o una pregunta frecuente, estén
-     * activos o no. El campo activo del cuerpo permite ocultar o volver a mostrar el recurso.
-     *
-     * @author Gabriela Zabaleta
-     * @param type tipo de recurso: wellbeing, departments o faq
-     * @param id identificador del recurso
-     * @param body cuerpo JSON de la solicitud
-     * @return recurso actualizado
-     * @throws BadRequestException cuando el tipo o el cuerpo son inválidos
-     * @throws NotFoundException cuando el recurso no existe o no pertenece al tipo
-     * @throws ConstraintViolationException cuando el cuerpo incumple las validaciones del DTO
-     */
     @Transactional
     public Object update(String type, UUID id, JsonNode body) {
         ServiceType serviceType = resolveType(type);
@@ -173,15 +102,6 @@ public class ServicesService {
                 toServicio(id, serviceType, parse(body, ServiceRequest.class), current.activo()));
     }
 
-    /**
-     * Desactiva lógicamente un servicio de bienestar, una dependencia o una pregunta frecuente.
-     *
-     * @author Gabriela Zabaleta
-     * @param type tipo de recurso: wellbeing, departments o faq
-     * @param id identificador del recurso
-     * @throws BadRequestException cuando el tipo es inválido
-     * @throws NotFoundException cuando el recurso no existe, está inactivo o no pertenece al tipo
-     */
     @Transactional
     public void delete(String type, UUID id) {
         ServiceType serviceType = resolveType(type);

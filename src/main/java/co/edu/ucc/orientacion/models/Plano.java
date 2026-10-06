@@ -5,23 +5,6 @@ import com.fasterxml.jackson.databind.JsonNode;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-/**
- * Plano estático de un edificio o piso del campus. Los polígonos de los espacios se dibujan sobre
- * esta imagen en píxeles (Leaflet L.CRS.Simple), sin coordenadas GPS.
- *
- * @author Diego Luna
- * @param id identificador único UUID
- * @param nombre nombre del plano, por ejemplo "Bloque C · Piso 1"
- * @param edificio edificio que representa
- * @param piso piso que representa
- * @param imagen imagen como data URL (data:image/jpeg;base64,...)
- * @param ancho ancho de la imagen en píxeles
- * @param alto alto de la imagen en píxeles
- * @param activo indica si el plano es visible para los estudiantes
- * @param navegacion malla caminable y entradas para calcular caminos, o null (ver V3)
- * @param creadoEn fecha de creación
- * @param actualizadoEn fecha de la última modificación
- */
 public record Plano(
         UUID id,
         String nombre,

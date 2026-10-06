@@ -72,7 +72,7 @@ class CampusMapServiceTest {
     }
 
     private static Plano plano(UUID id, int ancho, int alto) {
-        return new Plano(id, "Bloque C · Piso 1", "Bloque C", "1", "data:image/png;base64,AA==", ancho, alto, true, null, null);
+        return new Plano(id, "Bloque C · Piso 1", "Bloque C", "1", "data:image/png;base64,AA==", ancho, alto, true, null, null, null);
     }
 
     @Test
@@ -183,5 +183,24 @@ class CampusMapServiceTest {
         verify(spaceRepository).updateGeometry(eq(spaceId), eq(planId), saved.capture());
         assertEquals("{\"type\":\"Polygon\",\"coordinates\":[[[1.0,1.0],[9.0,1.0],[9.0,9.0],[1.0,1.0]]]}", saved.getValue());
         verify(planRepository).touch(planId);
+    }
+
+    @Test
+    @DisplayName("Editar los datos de un plano conserva su malla de caminos")
+    void updateKeepsNavigation() throws IOException {
+        UUID id = UUID.randomUUID();
+        JsonNode nav = parse("{\"malla\":\"1,2\",\"ancho\":3,\"alto\":1}");
+        Plano actual = new Plano(id, "Campus", null, null, "data:image/png;base64,AA==", 100, 50, true, nav, null, null);
+        when(planRepository.findById(id)).thenReturn(Optional.of(actual));
+        when(planRepository.update(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(spaceRepository.findShapesByPlan(id, false)).thenReturn(java.util.List.of());
+
+        var detalle = service.updatePlan(id, new PlanRequest("Campus UCC", null, null, null, null, null, null));
+
+        ArgumentCaptor<Plano> guardado = ArgumentCaptor.forClass(Plano.class);
+        verify(planRepository).update(guardado.capture());
+        assertEquals(nav, guardado.getValue().navegacion());
+        assertEquals(nav, detalle.navegacion());
+        verify(planRepository, never()).countShapes(any());
     }
 }

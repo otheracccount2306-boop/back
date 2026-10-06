@@ -127,7 +127,7 @@ public class CampusMapService {
         int[] size = readImageSize(request.imagen(), request.ancho(), request.alto());
         Plano created = planRepository.create(new Plano(null, request.nombre().trim(), blankToNull(request.edificio()),
                 blankToNull(request.piso()), request.imagen(), size[0], size[1],
-                request.activo() == null || request.activo(), null, null));
+                request.activo() == null || request.activo(), null, null, null));
         return PlanDetailResponse.of(created, List.of());
     }
 
@@ -161,7 +161,7 @@ public class CampusMapService {
         }
         Plano updated = planRepository.update(new Plano(id, request.nombre().trim(), blankToNull(request.edificio()),
                 blankToNull(request.piso()), imagen, ancho, alto,
-                request.activo() == null ? current.activo() : request.activo(), null, null));
+                request.activo() == null ? current.activo() : request.activo(), current.navegacion(), null, null));
         return PlanDetailResponse.of(updated, spaceRepository.findShapesByPlan(id, false));
     }
 

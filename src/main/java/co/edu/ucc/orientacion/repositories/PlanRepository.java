@@ -2,11 +2,16 @@ package co.edu.ucc.orientacion.repositories;
 
 import co.edu.ucc.orientacion.dto.response.PlanSummaryResponse;
 import co.edu.ucc.orientacion.models.Plano;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.jdbc.core.namedparam.MapSqlParameterSource;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+import java.sql.ResultSet;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -20,6 +25,8 @@ import java.util.UUID;
 @Repository
 public class PlanRepository {
 
+    private static final ObjectMapper JSON = new ObjectMapper();
+
     private static final RowMapper<Plano> PLANO_MAPPER = (rs, i) -> new Plano(
             rs.getObject("id", UUID.class),
             rs.getString("nombre"),
@@ -29,6 +36,7 @@ public class PlanRepository {
             rs.getInt("ancho"),
             rs.getInt("alto"),
             rs.getBoolean("activo"),
+            readJson(rs, "navegacion"),
             rs.getObject("creado_en", LocalDateTime.class),
             rs.getObject("actualizado_en", LocalDateTime.class));
 
@@ -41,18 +49,20 @@ public class PlanRepository {
             rs.getInt("alto"),
             rs.getBoolean("activo"),
             rs.getInt("espacios_dibujados"),
+            rs.getBoolean("con_navegacion"),
             rs.getObject("actualizado_en", LocalDateTime.class));
 
     /** Listado sin la columna imagen, que es pesada; cuenta los espacios dibujados de cada plano. */
     private static final String SUMMARY_SELECT = """
             SELECT p.id, p.nombre, p.edificio, p.piso, p.ancho, p.alto, p.activo, p.actualizado_en,
+                   (p.navegacion IS NOT NULL) AS con_navegacion,
                    COUNT(e.id) FILTER (WHERE CAST(:onlyActive AS BOOLEAN) = FALSE OR e.activo = TRUE)
                        AS espacios_dibujados
             FROM plano p
             LEFT JOIN espacio e ON e.plano_id = p.id AND e.geometria IS NOT NULL
             WHERE (CAST(:onlyActive AS BOOLEAN) = FALSE OR p.activo = TRUE)
             GROUP BY p.id
-            ORDER BY p.activo DESC, p.edificio NULLS LAST, p.piso NULLS LAST, p.nombre
+            ORDER BY p.activo DESC, (p.navegacion IS NOT NULL) DESC, p.edificio NULLS LAST, p.piso NULLS LAST, p.nombre
             """;
 
     private final NamedParameterJdbcTemplate jdbc;
@@ -170,6 +180,18 @@ public class PlanRepository {
                 "SELECT COUNT(*) FROM espacio WHERE plano_id = :id AND geometria IS NOT NULL",
                 new MapSqlParameterSource("id", id), Integer.class);
         return count == null ? 0 : count;
+    }
+
+    private static JsonNode readJson(ResultSet rs, String column) throws SQLException {
+        String raw = rs.getString(column);
+        if (raw == null) {
+            return null;
+        }
+        try {
+            return JSON.readTree(raw);
+        } catch (JsonProcessingException e) {
+            throw new SQLException("JSON inválido en la columna " + column, e);
+        }
     }
 
     private MapSqlParameterSource params(Plano p) {

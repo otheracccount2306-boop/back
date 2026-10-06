@@ -1,5 +1,7 @@
 package co.edu.ucc.orientacion.models;
 
+import com.fasterxml.jackson.databind.JsonNode;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -16,6 +18,7 @@ import java.util.UUID;
  * @param ancho ancho de la imagen en píxeles
  * @param alto alto de la imagen en píxeles
  * @param activo indica si el plano es visible para los estudiantes
+ * @param navegacion malla caminable y entradas para calcular caminos, o null (ver V3)
  * @param creadoEn fecha de creación
  * @param actualizadoEn fecha de la última modificación
  */
@@ -28,6 +31,7 @@ public record Plano(
         int ancho,
         int alto,
         boolean activo,
+        JsonNode navegacion,
         LocalDateTime creadoEn,
         LocalDateTime actualizadoEn) {
 }

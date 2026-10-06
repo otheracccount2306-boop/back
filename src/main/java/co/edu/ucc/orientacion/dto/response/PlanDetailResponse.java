@@ -1,6 +1,7 @@
 package co.edu.ucc.orientacion.dto.response;
 
 import co.edu.ucc.orientacion.models.Plano;
+import com.fasterxml.jackson.databind.JsonNode;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -21,6 +22,7 @@ import java.util.UUID;
  * @param activo si el plano es visible para los estudiantes
  * @param actualizadoEn fecha de la última modificación
  * @param espacios espacios dibujados sobre el plano
+ * @param navegacion malla caminable y entradas para calcular caminos, o null
  */
 public record PlanDetailResponse(
         UUID id,
@@ -32,7 +34,8 @@ public record PlanDetailResponse(
         int alto,
         boolean activo,
         LocalDateTime actualizadoEn,
-        List<SpaceShapeResponse> espacios) {
+        List<SpaceShapeResponse> espacios,
+        JsonNode navegacion) {
 
     /**
      * Combina un plano con sus espacios dibujados.
@@ -44,6 +47,6 @@ public record PlanDetailResponse(
      */
     public static PlanDetailResponse of(Plano plano, List<SpaceShapeResponse> espacios) {
         return new PlanDetailResponse(plano.id(), plano.nombre(), plano.edificio(), plano.piso(), plano.imagen(),
-                plano.ancho(), plano.alto(), plano.activo(), plano.actualizadoEn(), espacios);
+                plano.ancho(), plano.alto(), plano.activo(), plano.actualizadoEn(), espacios, plano.navegacion());
     }
 }

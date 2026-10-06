@@ -46,6 +46,8 @@ public class SpaceRepository {
             rs.getString("nombre"),
             rs.getString("codigo"),
             rs.getString("categoria"),
+            rs.getString("edificio"),
+            rs.getString("piso"),
             rs.getBoolean("activo"),
             readJson(rs, "geometria"));
 
@@ -211,11 +213,11 @@ public class SpaceRepository {
      */
     public List<SpaceShapeResponse> findShapesByPlan(UUID planoId, boolean onlyActive) {
         return jdbc.query("""
-                SELECT id, nombre, codigo, categoria, activo, geometria FROM espacio
+                SELECT id, nombre, codigo, categoria, edificio, piso, activo, geometria FROM espacio
                 WHERE plano_id = :planoId
                   AND geometria IS NOT NULL
                   AND (CAST(:onlyActive AS BOOLEAN) = FALSE OR activo = TRUE)
-                ORDER BY codigo
+                ORDER BY piso NULLS FIRST, codigo
                 """,
                 new MapSqlParameterSource().addValue("planoId", planoId).addValue("onlyActive", onlyActive),
                 SHAPE_MAPPER);

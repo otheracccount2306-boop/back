@@ -12,6 +12,8 @@ import java.util.UUID;
  * @param nombre nombre del espacio
  * @param codigo código del espacio
  * @param categoria categoría del espacio
+ * @param edificio edificio o bloque donde está el espacio
+ * @param piso piso del espacio; en el mapa del campus define en qué capa de piso se muestra
  * @param activo si el espacio es visible para los estudiantes
  * @param geometria polígono GeoJSON en píxeles del plano
  */
@@ -20,6 +22,8 @@ public record SpaceShapeResponse(
         String nombre,
         String codigo,
         String categoria,
+        String edificio,
+        String piso,
         boolean activo,
         JsonNode geometria) {
 }

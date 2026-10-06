@@ -33,13 +33,14 @@ Monolito Java 21 + Spring Boot 3.2 + Spring Security 6 (JWT stateless) + Spring 
    psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V2__mapa_infraestructura.sql
    ```
 
-   Para cargar los planos y salones de **todo el campus**, generados desde los DWG del levantamiento arquitectónico (febrero de 2019), ejecute después de V2:
+   Para el **mapa único del campus**, aplique también V3 y después los datos (todo es idempotente):
 
    ```
+   psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V3__mapa_navegacion.sql
    psql -U postgres -d ucc_orientacion -1 -f db/datos_mapa_campus.sql
    ```
 
-   Crea 18 planos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8 por piso, más el plano general del campus) y 296 espacios con su polígono, tomados de la capa `AREAS` de cada DWG. El nombre de cada espacio es el texto que hay dentro de su polígono. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) quedan inactivos y el administrador puede activarlos desde el panel. Si un espacio ya existe con el mismo código, solo recibe el plano y el polígono. El script se puede ejecutar varias veces. Las imágenes limpias de cada planta están en `db/planos/`.
+   Crea un solo plano, "Campus UCC Santa Marta": el plano general con la planta baja de cada bloque en su posición real, los 296 espacios de todos los pisos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8) con su polígono y su piso, y la malla de caminos que usa la app para trazar rutas. Todo sale de los DWG del levantamiento arquitectónico (febrero de 2019): los salones de la capa `AREAS` de cada bloque y la ubicación de cada bloque, del plano general. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) quedan inactivos y el administrador puede activarlos desde el panel. Si ya había cargado la versión anterior de 18 planos por piso, el script mueve esos espacios a este plano y borra los planos viejos. La imagen del campus está en `db/planos/mapa-campus.png`.
 
    Nota sobre los DWG: en el archivo del Bloque 3 los títulos dicen "Bloque 6", y en el del Bloque 6 los pisos 4, 5 y la terraza dicen "Bloque 3". Por los códigos de las aulas (AULA 3 2xx y AULA 6 4xx) se usó el nombre del archivo.
 
@@ -75,13 +76,14 @@ Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o pi
 
 - Tabla `plano`: nombre, edificio, piso, imagen como data URL (PNG, JPEG o WebP, hasta ~2 MB) y su ancho y alto. El servidor lee las dimensiones de la propia imagen.
 - `espacio.plano_id` y `espacio.geometria` (`JSONB`): un objeto GeoJSON `Polygon` con posiciones `[x, y]`. La base exige que sea un Polygon y que geometría y plano vayan juntos; el backend valida además anillos cerrados, mínimo tres vértices, máximo 500 y que no se salga de la imagen (ajusta al borde con 2 px de tolerancia).
+- `plano.navegacion` (`JSONB`, V3): malla caminable de 0,5 m y entradas del campus, para que la app calcule caminos sin conexión. La genera el script de datos; el panel no la edita y al editar el plano se conserva.
 - Cada cambio de polígono actualiza `plano.actualizado_en`; la app compara esa fecha para saber si su copia sin conexión sigue vigente.
 - Si un plano ya tiene espacios dibujados, su imagen solo se puede reemplazar por otra del mismo tamaño (409), para no desplazar los polígonos.
 
 | Endpoint | Rol | Devuelve |
 |---|---|---|
 | `GET /campus/plans` | autenticado | Planos activos, sin imagen, con `espaciosDibujados` y `actualizadoEn` |
-| `GET /campus/plans/{id}` | autenticado | Plano con imagen y `espacios: [{ id, nombre, codigo, categoria, geometria }]` (solo activos) |
+| `GET /campus/plans/{id}` | autenticado | Plano con imagen, `navegacion` y `espacios: [{ id, nombre, codigo, categoria, edificio, piso, geometria }]` (solo activos) |
 | `GET /admin/campus/plans` · `GET /admin/campus/plans/{id}` | ADMINISTRADOR | Igual, en cualquier estado |
 | `POST /admin/campus/plans` · `PUT /admin/campus/plans/{id}` | ADMINISTRADOR | `{ nombre, edificio, piso, imagen, ancho, alto, activo }`; en `PUT`, `imagen: null` conserva la actual |
 | `DELETE /admin/campus/plans/{id}` | ADMINISTRADOR | Eliminación lógica; los polígonos se conservan |

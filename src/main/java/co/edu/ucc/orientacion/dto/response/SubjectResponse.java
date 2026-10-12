@@ -1,6 +1,7 @@
 package co.edu.ucc.orientacion.dto.response;
 
 import co.edu.ucc.orientacion.models.Asignatura;
+import co.edu.ucc.orientacion.models.ClasePersonal;
 
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -8,7 +9,8 @@ import java.util.List;
 import java.util.UUID;
 
 /**
- * Vista de una asignatura con los días de clase como lista.
+ * Vista de una clase del horario con los días como lista. Puede ser una asignatura institucional o
+ * una clase que el propio estudiante registró (origen PERSONAL).
  *
  * @author Diego Luna
  * @param id identificador único UUID
@@ -23,6 +25,8 @@ import java.util.UUID;
  * @param activo indica si la asignatura está vigente
  * @param espacioId espacio del mapa del campus que corresponde al aula, o null si el aula no
  *                  coincide con ningún espacio ubicado en el mapa
+ * @param origen INSTITUCIONAL para asignaturas de la universidad, PERSONAL para clases que
+ *               registró el estudiante
  */
 public record SubjectResponse(
         UUID id,
@@ -35,7 +39,14 @@ public record SubjectResponse(
         LocalTime horaFin,
         String periodoAcademico,
         boolean activo,
-        UUID espacioId) {
+        UUID espacioId,
+        String origen) {
+
+    /** Origen de las asignaturas que gestiona la universidad. */
+    public static final String INSTITUCIONAL = "INSTITUCIONAL";
+
+    /** Origen de las clases que registra el propio estudiante. */
+    public static final String PERSONAL = "PERSONAL";
 
     /**
      * Construye la vista a partir de la entidad de asignatura, sin espacio en el mapa.
@@ -71,6 +82,35 @@ public record SubjectResponse(
                 asignatura.horaFin(),
                 asignatura.periodoAcademico(),
                 asignatura.activo(),
-                espacioId);
+                espacioId,
+                INSTITUCIONAL);
+    }
+
+    /**
+     * Construye la vista de una clase registrada por el estudiante.
+     *
+     * @author Diego Luna
+     * @param clase clase personal
+     * @param espacioId espacio del mapa que corresponde al aula, o null
+     * @return DTO con origen PERSONAL, sin código ni periodo
+     */
+    public static SubjectResponse fromPersonal(ClasePersonal clase, UUID espacioId) {
+        return new SubjectResponse(
+                clase.id(),
+                clase.nombre(),
+                null,
+                clase.docente(),
+                clase.aula(),
+                splitDays(clase.dias()),
+                clase.horaInicio(),
+                clase.horaFin(),
+                null,
+                true,
+                espacioId,
+                PERSONAL);
+    }
+
+    private static List<String> splitDays(String dias) {
+        return dias == null || dias.isBlank() ? List.of() : Arrays.asList(dias.split(","));
     }
 }

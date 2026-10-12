@@ -108,6 +108,7 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(PUBLIC_ENDPOINTS).permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMINISTRADOR")
+                        .requestMatchers("/api/v1/academic/personal-classes/**").hasRole("ESTUDIANTE")
                         .anyRequest().authenticated())
                 .exceptionHandling(handling -> handling
                         .authenticationEntryPoint(this::unauthorized)

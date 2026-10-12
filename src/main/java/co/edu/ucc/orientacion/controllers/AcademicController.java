@@ -1,6 +1,7 @@
 package co.edu.ucc.orientacion.controllers;
 
 import co.edu.ucc.orientacion.dto.request.CalendarEventRequest;
+import co.edu.ucc.orientacion.dto.request.PersonalClassRequest;
 import co.edu.ucc.orientacion.dto.request.SubjectRequest;
 import co.edu.ucc.orientacion.dto.response.ApiResponse;
 import co.edu.ucc.orientacion.security.CurrentUser;
@@ -56,6 +57,53 @@ public class AcademicController {
             Authentication authentication, @RequestParam(required = false) String day) {
         return ResponseEntity.ok(ApiResponse.ok(
                 academicService.getSchedule(CurrentUser.id(authentication), day), "Horario obtenido correctamente"));
+    }
+
+    /**
+     * Registra una clase en el horario del estudiante autenticado.
+     *
+     * @author Diego Luna
+     * @param authentication autenticación de la solicitud; define el dueño de la clase
+     * @param request datos de la clase
+     * @return ResponseEntity con HTTP 201 y la clase como aparece en el horario
+     */
+    @PostMapping("/academic/personal-classes")
+    public ResponseEntity<ApiResponse> createPersonalClass(
+            Authentication authentication, @Valid @RequestBody PersonalClassRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.ok(
+                academicService.createPersonalClass(CurrentUser.id(authentication), request),
+                "Clase agregada a tu horario"));
+    }
+
+    /**
+     * Modifica una clase que registró el estudiante autenticado.
+     *
+     * @author Diego Luna
+     * @param authentication autenticación de la solicitud
+     * @param id identificador de la clase
+     * @param request nuevos datos
+     * @return ResponseEntity con HTTP 200 y la clase actualizada
+     */
+    @PutMapping("/academic/personal-classes/{id}")
+    public ResponseEntity<ApiResponse> updatePersonalClass(
+            Authentication authentication, @PathVariable UUID id, @Valid @RequestBody PersonalClassRequest request) {
+        return ResponseEntity.ok(ApiResponse.ok(
+                academicService.updatePersonalClass(CurrentUser.id(authentication), id, request),
+                "Clase actualizada"));
+    }
+
+    /**
+     * Borra una clase que registró el estudiante autenticado.
+     *
+     * @author Diego Luna
+     * @param authentication autenticación de la solicitud
+     * @param id identificador de la clase
+     * @return ResponseEntity con HTTP 200
+     */
+    @DeleteMapping("/academic/personal-classes/{id}")
+    public ResponseEntity<ApiResponse> deletePersonalClass(Authentication authentication, @PathVariable UUID id) {
+        academicService.deletePersonalClass(CurrentUser.id(authentication), id);
+        return ResponseEntity.ok(ApiResponse.ok(null, "Clase eliminada de tu horario"));
     }
 
     /**

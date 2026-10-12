@@ -42,6 +42,12 @@ Monolito Java 21 + Spring Boot 3.2 + Spring Security 6 (JWT stateless) + Spring 
 
    Crea un solo plano, "Campus UCC Santa Marta": los 296 espacios de todos los pisos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8) con su polígono y su piso, la malla de caminos que usa la app para trazar rutas y un fondo vectorial (el lote y el contorno de cada bloque). La app del estudiante no muestra el plano arquitectónico: solo ese fondo y los espacios a los que entran estudiantes y docentes. Todo sale de los DWG del levantamiento arquitectónico (febrero de 2019): los salones de la capa `AREAS` de cada bloque y la ubicación de cada bloque, del plano general. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) y los de uso exclusivo del personal (cocinas, archivos, áreas técnicas) quedan inactivos y el administrador puede activarlos desde el panel. También cambia el aula de las clases de ejemplo por espacios reales del mapa. Si ya había cargado la versión anterior de 18 planos por piso, el script mueve esos espacios a este plano y borra los planos viejos. La imagen del plano arquitectónico (`db/planos/mapa-campus.png`) solo la usa el editor del administrador.
 
+   Para que cada estudiante pueda **registrar sus propias clases**, aplique V4 (idempotente):
+
+   ```
+   psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V4__clases_personales.sql
+   ```
+
    Nota sobre los DWG: en el archivo del Bloque 3 los títulos dicen "Bloque 6", y en el del Bloque 6 los pisos 4, 5 y la terraza dicen "Bloque 3". Por los códigos de las aulas (AULA 3 2xx y AULA 6 4xx) se usó el nombre del archivo.
 
 4. Pruebas unitarias (no requieren base de datos): `mvn test`
@@ -94,6 +100,21 @@ Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o pi
 `GET /campus/spaces` y `GET /admin/campus/spaces` ahora incluyen `planoId` y `geometria` en cada espacio. El `PUT` de espacios no toca la geometría.
 
 **Aula de cada clase en el mapa.** `GET /academic/schedule` y las respuestas de asignaturas del administrador incluyen `espacioId`: el espacio del mapa cuyo código o nombre coincide con `asignatura.aula`, sin importar mayúsculas, tildes ni separadores (`AU-2-101`, `Aula 2 101` y `aula 2-101` valen igual). Solo cuenta un espacio activo y dibujado en un plano activo; si el nombre se repite en varios espacios, hay que escribir el código. Con `espacioId` la app muestra "Ver en mapa" en el horario.
+
+## Clases que registra el estudiante
+
+Además de las asignaturas en las que está matriculado, el estudiante puede anotar sus propias clases (nombre, docente, aula, días y horas). Se guardan en `clase_personal` (V4) y son privadas:
+
+- Solo el rol ESTUDIANTE accede a estos endpoints (403 para el administrador, que no ve ni gestiona datos personales del horario).
+- El dueño siempre es el usuario de la sesión: la solicitud no trae `usuarioId` y todas las consultas filtran por él. La clase de otro estudiante responde 404, sin revelar que existe.
+- Se valida lo mismo que en las asignaturas (días válidos, fin posterior al inicio, longitudes) y además: máximo 30 clases por estudiante y ninguna puede cruzarse con otra de su horario, propia o institucional (409 con el nombre de la clase con la que choca).
+- `GET /academic/schedule` devuelve juntas las asignaturas y las clases propias, ordenadas por hora, con `origen` = `INSTITUCIONAL` o `PERSONAL` y `espacioId` si el aula está en el mapa. Así la copia sin conexión del horario incluye ambas.
+
+| Endpoint | Rol | Cuerpo |
+|---|---|---|
+| `POST /academic/personal-classes` | ESTUDIANTE | `{ nombre, docente?, aula?, dias: ["LUNES", …], horaInicio, horaFin }` → 201 |
+| `PUT /academic/personal-classes/{id}` | ESTUDIANTE (dueño) | Igual que el POST |
+| `DELETE /academic/personal-classes/{id}` | ESTUDIANTE (dueño) | — |
 
 ## Configuración
 

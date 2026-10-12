@@ -33,14 +33,15 @@ Monolito Java 21 + Spring Boot 3.2 + Spring Security 6 (JWT stateless) + Spring 
    psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V2__mapa_infraestructura.sql
    ```
 
-   Para el **mapa único del campus**, aplique también V3 y después los datos (todo es idempotente):
+   Para el **mapa único del campus**, aplique también V3, V4, V5 y después los datos (todo es idempotente):
 
    ```
    psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V3__mapa_navegacion.sql
+   psql -U postgres -d ucc_orientacion -1 -f src/main/resources/db/migration/V5__navegacion_por_pisos.sql
    psql -U postgres -d ucc_orientacion -1 -f db/datos_mapa_campus.sql
    ```
 
-   Crea un solo plano, "Campus UCC Santa Marta": los 296 espacios de todos los pisos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8) con su polígono y su piso, la malla de caminos que usa la app para trazar rutas y un fondo vectorial (el lote y el contorno de cada bloque). La app del estudiante no muestra el plano arquitectónico: solo ese fondo y los espacios a los que entran estudiantes y docentes. Todo sale de los DWG del levantamiento arquitectónico (febrero de 2019): los salones de la capa `AREAS` de cada bloque y la ubicación de cada bloque, del plano general. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) y los de uso exclusivo del personal (cocinas, archivos, áreas técnicas) quedan inactivos y el administrador puede activarlos desde el panel. También cambia el aula de las clases de ejemplo por espacios reales del mapa. Si ya había cargado la versión anterior de 18 planos por piso, el script mueve esos espacios a este plano y borra los planos viejos. La imagen del plano arquitectónico (`db/planos/mapa-campus.png`) solo la usa el editor del administrador.
+   Crea un solo plano, "Campus UCC Santa Marta": los 296 espacios de todos los pisos (bloques 1, 2A, 2B, 3, 4-5, 6, 7 y 8) con su polígono y su piso, las mallas de caminos por piso que usa la app para trazar rutas (muros y columnas como obstáculos, unidas solo por escaleras y ascensores) y el fondo del campus (el lote, el contorno de cada bloque y el plano general en gris claro). La app del estudiante no muestra el plano arquitectónico: solo ese fondo y los espacios a los que entran estudiantes y docentes. Todo sale de los DWG del levantamiento arquitectónico (febrero de 2019): los salones de la capa `AREAS` de cada bloque y la ubicación de cada bloque, del plano general. Los espacios de servicio (aseos, bodegas, cuartos técnicos, lockers) y los de uso exclusivo del personal (cocinas, archivos, áreas técnicas) quedan inactivos y el administrador puede activarlos desde el panel. También cambia el aula de las clases de ejemplo por espacios reales del mapa. Si ya había cargado la versión anterior de 18 planos por piso, el script mueve esos espacios a este plano y borra los planos viejos. La imagen del plano arquitectónico (`db/planos/mapa-campus.png`) solo la usa el editor del administrador.
 
    Para que cada estudiante pueda **registrar sus propias clases**, aplique V4 (idempotente):
 
@@ -82,7 +83,7 @@ Los espacios se ubican sobre **planos estáticos** (una imagen por edificio o pi
 
 - Tabla `plano`: nombre, edificio, piso, imagen como data URL (PNG, JPEG o WebP, hasta ~2 MB) y su ancho y alto. El servidor lee las dimensiones de la propia imagen.
 - `espacio.plano_id` y `espacio.geometria` (`JSONB`): un objeto GeoJSON `Polygon` con posiciones `[x, y]`. La base exige que sea un Polygon y que geometría y plano vayan juntos; el backend valida además anillos cerrados, mínimo tres vértices, máximo 500 y que no se salga de la imagen (ajusta al borde con 2 px de tolerancia).
-- `plano.navegacion` (`JSONB`, V3): malla caminable de 0,5 m, entradas del campus y, opcionalmente, `base` (lote y contorno de los edificios) para dibujar el mapa sin la imagen. La app calcula los caminos sin conexión. La genera el script de datos; el panel no la edita y al editar el plano se conserva.
+- `plano.navegacion` (`JSONB`, V3 y V5): una malla caminable de 0,3 m por piso (`pisos`), las escaleras que unen los pisos (`escaleras`), las entradas del campus y, opcionalmente, `base` (lote, contorno de los edificios y fondo gris) para dibujar el mapa sin la imagen. V5 amplía la restricción para aceptar este formato y el anterior (`malla`). La app calcula los caminos sin conexión. La genera el script de datos; el panel no la edita y al editar el plano se conserva.
 - Cada cambio de polígono actualiza `plano.actualizado_en`; la app compara esa fecha para saber si su copia sin conexión sigue vigente.
 - Si un plano ya tiene espacios dibujados, su imagen solo se puede reemplazar por otra del mismo tamaño (409), para no desplazar los polígonos.
 

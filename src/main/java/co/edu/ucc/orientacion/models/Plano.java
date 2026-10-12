@@ -18,7 +18,7 @@ import java.util.UUID;
  * @param ancho ancho de la imagen en píxeles
  * @param alto alto de la imagen en píxeles
  * @param activo indica si el plano es visible para los estudiantes
- * @param navegacion malla caminable y entradas para calcular caminos, o null (ver V3)
+ * @param navegacion mallas caminables por piso, escaleras, entradas y fondo del campus, o null (ver V3 y V5)
  * @param creadoEn fecha de creación
  * @param actualizadoEn fecha de la última modificación
  */

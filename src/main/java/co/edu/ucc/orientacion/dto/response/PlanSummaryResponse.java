@@ -15,7 +15,7 @@ import java.util.UUID;
  * @param alto alto de la imagen en píxeles
  * @param activo si el plano es visible para los estudiantes
  * @param espaciosDibujados cantidad de espacios con polígono en este plano
- * @param navegacion true si el plano trae malla de caminos (es el mapa del campus)
+ * @param navegacion true si el plano trae navegación (es el mapa del campus)
  * @param actualizadoEn fecha de la última modificación; la app la usa para saber si su copia sin
  *                      conexión está vigente
  */

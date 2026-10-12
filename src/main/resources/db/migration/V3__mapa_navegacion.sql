@@ -23,12 +23,18 @@ ALTER TABLE plano ADD COLUMN IF NOT EXISTS navegacion JSONB;
 COMMENT ON COLUMN plano.navegacion IS
   'Malla caminable y entradas del campus para calcular caminos en la app (ver V3__mapa_navegacion.sql)';
 
-ALTER TABLE plano DROP CONSTRAINT IF EXISTS ck_plano_navegacion;
-ALTER TABLE plano ADD CONSTRAINT ck_plano_navegacion CHECK (
-  navegacion IS NULL OR (
-    jsonb_typeof(navegacion) = 'object'
-    AND jsonb_typeof(navegacion -> 'malla') = 'string'
-    AND (navegacion ->> 'ancho')::INT > 0
-    AND (navegacion ->> 'alto')::INT > 0
-  )
-);
+-- La restricción se crea solo si no existe: así volver a ejecutar este archivo no reemplaza la
+-- versión más amplia de V5 (navegación por pisos) cuando ya hay planos con ese formato.
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'ck_plano_navegacion') THEN
+    ALTER TABLE plano ADD CONSTRAINT ck_plano_navegacion CHECK (
+      navegacion IS NULL OR (
+        jsonb_typeof(navegacion) = 'object'
+        AND jsonb_typeof(navegacion -> 'malla') = 'string'
+        AND (navegacion ->> 'ancho')::INT > 0
+        AND (navegacion ->> 'alto')::INT > 0
+      )
+    );
+  END IF;
+END $$;

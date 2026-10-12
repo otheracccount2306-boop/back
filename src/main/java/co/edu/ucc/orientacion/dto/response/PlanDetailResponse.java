@@ -22,7 +22,7 @@ import java.util.UUID;
  * @param activo si el plano es visible para los estudiantes
  * @param actualizadoEn fecha de la última modificación
  * @param espacios espacios dibujados sobre el plano
- * @param navegacion malla caminable y entradas para calcular caminos, o null
+ * @param navegacion mallas caminables por piso, escaleras, entradas y fondo del campus, o null
  */
 public record PlanDetailResponse(
         UUID id,

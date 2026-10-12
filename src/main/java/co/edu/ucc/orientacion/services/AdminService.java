@@ -89,7 +89,7 @@ public class AdminService {
 
     public List<RoleResponse> listRoles() {
         return List.of(
-                new RoleResponse(ROLE_STUDENT, "Consulta horarios, servicios, campus, noticias y eventos"),
+                new RoleResponse(ROLE_STUDENT, "Consulta horarios, registra sus propias clases y consulta servicios, campus, noticias y eventos"),
                 new RoleResponse(ROLE_ADMIN, "Administra usuarios y el contenido institucional"));
     }
 

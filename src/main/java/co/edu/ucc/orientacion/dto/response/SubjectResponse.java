@@ -1,6 +1,7 @@
 package co.edu.ucc.orientacion.dto.response;
 
 import co.edu.ucc.orientacion.models.Asignatura;
+import co.edu.ucc.orientacion.models.ClasePersonal;
 
 import java.time.LocalTime;
 import java.util.Arrays;
@@ -18,7 +19,12 @@ public record SubjectResponse(
         LocalTime horaFin,
         String periodoAcademico,
         boolean activo,
-        UUID espacioId) {
+        UUID espacioId,
+        String origen) {
+
+    public static final String INSTITUCIONAL = "INSTITUCIONAL";
+
+    public static final String PERSONAL = "PERSONAL";
 
     public static SubjectResponse from(Asignatura asignatura) {
         return from(asignatura, null);
@@ -39,6 +45,27 @@ public record SubjectResponse(
                 asignatura.horaFin(),
                 asignatura.periodoAcademico(),
                 asignatura.activo(),
-                espacioId);
+                espacioId,
+                INSTITUCIONAL);
+    }
+
+    public static SubjectResponse fromPersonal(ClasePersonal clase, UUID espacioId) {
+        return new SubjectResponse(
+                clase.id(),
+                clase.nombre(),
+                null,
+                clase.docente(),
+                clase.aula(),
+                splitDays(clase.dias()),
+                clase.horaInicio(),
+                clase.horaFin(),
+                null,
+                true,
+                espacioId,
+                PERSONAL);
+    }
+
+    private static List<String> splitDays(String dias) {
+        return dias == null || dias.isBlank() ? List.of() : Arrays.asList(dias.split(","));
     }
 }

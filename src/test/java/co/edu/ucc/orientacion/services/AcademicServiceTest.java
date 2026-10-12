@@ -1,14 +1,17 @@
 package co.edu.ucc.orientacion.services;
 
 import co.edu.ucc.orientacion.dto.request.CalendarEventRequest;
+import co.edu.ucc.orientacion.dto.request.PersonalClassRequest;
 import co.edu.ucc.orientacion.dto.request.SubjectRequest;
 import co.edu.ucc.orientacion.dto.response.SubjectResponse;
 import co.edu.ucc.orientacion.exceptions.BadRequestException;
 import co.edu.ucc.orientacion.exceptions.ConflictException;
 import co.edu.ucc.orientacion.exceptions.NotFoundException;
 import co.edu.ucc.orientacion.models.Asignatura;
+import co.edu.ucc.orientacion.models.ClasePersonal;
 import co.edu.ucc.orientacion.repositories.CalendarRepository;
 import co.edu.ucc.orientacion.repositories.EnrollmentRepository;
+import co.edu.ucc.orientacion.repositories.PersonalClassRepository;
 import co.edu.ucc.orientacion.repositories.SpaceRepository;
 import co.edu.ucc.orientacion.repositories.SubjectRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -49,11 +53,15 @@ class AcademicServiceTest {
     @Mock
     private SpaceRepository spaceRepository;
 
+    @Mock
+    private PersonalClassRepository personalClassRepository;
+
     private AcademicService academicService;
 
     @BeforeEach
     void setUp() {
-        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository, spaceRepository);
+        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository, spaceRepository,
+                personalClassRepository);
     }
 
     private SubjectRequest subjectRequest(List<String> dias, LocalTime inicio, LocalTime fin) {
@@ -236,5 +244,92 @@ class AcademicServiceTest {
                 "Parciales", null, "académico", LocalDate.of(2026, 3, 10), LocalDate.of(2026, 3, 1));
 
         assertThrows(BadRequestException.class, () -> academicService.createCalendarEvent(request));
+    }
+
+    private static PersonalClassRequest personal(List<String> dias, LocalTime inicio, LocalTime fin) {
+        return new PersonalClassRequest("  Inglés  ", " ", "Aula 2 101", dias, inicio, fin);
+    }
+
+    @Test
+    @DisplayName("El horario combina asignaturas y clases propias, ordenadas por hora")
+    void scheduleMergesPersonalClasses() {
+        UUID userId = UUID.randomUUID();
+        when(enrollmentRepository.findScheduleByUsuario(userId, null)).thenReturn(List.of(clase("A", null)));
+        when(personalClassRepository.findByUsuario(userId, null)).thenReturn(List.of(new ClasePersonal(
+                UUID.randomUUID(), userId, "Inglés", null, null, "LUNES", LocalTime.of(6, 0), LocalTime.of(6, 45),
+                null, null)));
+
+        List<SubjectResponse> horario = academicService.getSchedule(userId, null);
+
+        assertEquals(2, horario.size());
+        assertEquals("Inglés", horario.get(0).nombre());
+        assertEquals(SubjectResponse.PERSONAL, horario.get(0).origen());
+        assertEquals(SubjectResponse.INSTITUCIONAL, horario.get(1).origen());
+    }
+
+    @Test
+    @DisplayName("Registrar una clase propia la guarda a nombre del usuario autenticado, con datos limpios")
+    void createPersonalClassUsesAuthenticatedOwner() {
+        UUID userId = UUID.randomUUID();
+        when(personalClassRepository.findOverlap(eq(userId), eq("LUNES,MIERCOLES"), any(), any(), isNull()))
+                .thenReturn(Optional.empty());
+        when(personalClassRepository.create(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        SubjectResponse creada = academicService.createPersonalClass(userId,
+                personal(List.of("miércoles", "lunes"), LocalTime.of(10, 0), LocalTime.of(12, 0)));
+
+        ArgumentCaptor<ClasePersonal> guardada = ArgumentCaptor.forClass(ClasePersonal.class);
+        verify(personalClassRepository).create(guardada.capture());
+        assertEquals(userId, guardada.getValue().usuarioId());
+        assertEquals("Inglés", guardada.getValue().nombre());
+        assertNull(guardada.getValue().docente());
+        assertEquals("LUNES,MIERCOLES", guardada.getValue().dias());
+        assertEquals(SubjectResponse.PERSONAL, creada.origen());
+    }
+
+    @Test
+    @DisplayName("Una clase propia que se cruza con otra del horario responde 409")
+    void createPersonalClassRejectsOverlap() {
+        UUID userId = UUID.randomUUID();
+        when(personalClassRepository.findOverlap(eq(userId), eq("LUNES"), any(), any(), isNull()))
+                .thenReturn(Optional.of("Matemáticas Discretas"));
+
+        ConflictException error = assertThrows(ConflictException.class, () -> academicService.createPersonalClass(
+                userId, personal(List.of("LUNES"), LocalTime.of(8, 0), LocalTime.of(9, 0))));
+
+        assertEquals("Se cruza con Matemáticas Discretas en ese horario", error.getMessage());
+        verify(personalClassRepository, never()).create(any());
+    }
+
+    @Test
+    @DisplayName("No se pueden registrar más clases propias que el máximo")
+    void createPersonalClassRespectsLimit() {
+        UUID userId = UUID.randomUUID();
+        when(personalClassRepository.countByUsuario(userId)).thenReturn(AcademicService.MAX_PERSONAL_CLASSES);
+
+        assertThrows(BadRequestException.class, () -> academicService.createPersonalClass(
+                userId, personal(List.of("LUNES"), LocalTime.of(8, 0), LocalTime.of(9, 0))));
+        verify(personalClassRepository, never()).create(any());
+    }
+
+    @Test
+    @DisplayName("Una clase propia con la hora de fin antes del inicio responde 400")
+    void createPersonalClassRejectsInvertedHours() {
+        assertThrows(BadRequestException.class, () -> academicService.createPersonalClass(
+                UUID.randomUUID(), personal(List.of("LUNES"), LocalTime.of(9, 0), LocalTime.of(8, 0))));
+    }
+
+    @Test
+    @DisplayName("Editar o borrar la clase de otro estudiante responde 404 y no la toca")
+    void personalClassOfAnotherStudentIsNotFound() {
+        UUID userId = UUID.randomUUID();
+        UUID ajena = UUID.randomUUID();
+        when(personalClassRepository.findByIdAndUsuario(ajena, userId)).thenReturn(Optional.empty());
+        when(personalClassRepository.delete(ajena, userId)).thenReturn(0);
+
+        assertThrows(NotFoundException.class, () -> academicService.updatePersonalClass(
+                userId, ajena, personal(List.of("LUNES"), LocalTime.of(8, 0), LocalTime.of(9, 0))));
+        assertThrows(NotFoundException.class, () -> academicService.deletePersonalClass(userId, ajena));
+        verify(personalClassRepository, never()).update(any());
     }
 }

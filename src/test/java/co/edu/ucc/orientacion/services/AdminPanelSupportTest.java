@@ -9,6 +9,7 @@ import co.edu.ucc.orientacion.models.Faq;
 import co.edu.ucc.orientacion.models.Servicio;
 import co.edu.ucc.orientacion.repositories.CalendarRepository;
 import co.edu.ucc.orientacion.repositories.EnrollmentRepository;
+import co.edu.ucc.orientacion.repositories.PersonalClassRepository;
 import co.edu.ucc.orientacion.repositories.EventRepository;
 import co.edu.ucc.orientacion.repositories.FaqRepository;
 import co.edu.ucc.orientacion.repositories.NewsRepository;
@@ -57,6 +58,9 @@ class AdminPanelSupportTest {
     private SpaceRepository spaceRepository;
 
     @Mock
+    private PersonalClassRepository personalClassRepository;
+
+    @Mock
     private SubjectRepository subjectRepository;
 
     @Mock
@@ -81,7 +85,8 @@ class AdminPanelSupportTest {
         servicesService = new ServicesService(
                 serviceRepository, faqRepository, objectMapper, Validation.buildDefaultValidatorFactory().getValidator());
         campusService = new CampusService(spaceRepository);
-        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository, spaceRepository);
+        academicService = new AcademicService(subjectRepository, enrollmentRepository, calendarRepository, spaceRepository,
+                personalClassRepository);
         newsService = new NewsService(newsRepository, eventRepository);
     }
 

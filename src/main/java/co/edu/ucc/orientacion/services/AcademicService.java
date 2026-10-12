@@ -1,21 +1,26 @@
 package co.edu.ucc.orientacion.services;
 
 import co.edu.ucc.orientacion.dto.request.CalendarEventRequest;
+import co.edu.ucc.orientacion.dto.request.PersonalClassRequest;
 import co.edu.ucc.orientacion.dto.request.SubjectRequest;
 import co.edu.ucc.orientacion.dto.response.SubjectResponse;
 import co.edu.ucc.orientacion.exceptions.BadRequestException;
 import co.edu.ucc.orientacion.exceptions.ConflictException;
 import co.edu.ucc.orientacion.exceptions.NotFoundException;
 import co.edu.ucc.orientacion.models.Asignatura;
+import co.edu.ucc.orientacion.models.ClasePersonal;
 import co.edu.ucc.orientacion.models.EventoCalendario;
 import co.edu.ucc.orientacion.repositories.CalendarRepository;
 import co.edu.ucc.orientacion.repositories.EnrollmentRepository;
+import co.edu.ucc.orientacion.repositories.PersonalClassRepository;
 import co.edu.ucc.orientacion.repositories.SpaceRepository;
 import co.edu.ucc.orientacion.repositories.SubjectRepository;
 import co.edu.ucc.orientacion.utils.TextUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -34,16 +39,21 @@ public class AcademicService {
     private final EnrollmentRepository enrollmentRepository;
     private final CalendarRepository calendarRepository;
     private final SpaceRepository spaceRepository;
+    private final PersonalClassRepository personalClassRepository;
+
+    static final int MAX_PERSONAL_CLASSES = 30;
 
     public AcademicService(
             SubjectRepository subjectRepository,
             EnrollmentRepository enrollmentRepository,
             CalendarRepository calendarRepository,
-            SpaceRepository spaceRepository) {
+            SpaceRepository spaceRepository,
+            PersonalClassRepository personalClassRepository) {
         this.subjectRepository = subjectRepository;
         this.enrollmentRepository = enrollmentRepository;
         this.calendarRepository = calendarRepository;
         this.spaceRepository = spaceRepository;
+        this.personalClassRepository = personalClassRepository;
     }
 
     public List<SubjectResponse> getSchedule(UUID userId, String day) {
@@ -51,7 +61,80 @@ public class AcademicService {
         if (normalizedDay != null && !WEEK_DAYS.contains(normalizedDay)) {
             throw new BadRequestException("Día inválido. Valores permitidos: " + String.join(", ", WEEK_DAYS));
         }
-        return withRooms(enrollmentRepository.findScheduleByUsuario(userId, normalizedDay));
+        List<Asignatura> subjects = enrollmentRepository.findScheduleByUsuario(userId, normalizedDay);
+        List<ClasePersonal> personal = personalClassRepository.findByUsuario(userId, normalizedDay);
+        boolean anyRoom = subjects.stream().anyMatch(a -> a.aula() != null && !a.aula().isBlank())
+                || personal.stream().anyMatch(c -> c.aula() != null && !c.aula().isBlank());
+        Map<String, UUID> rooms = anyRoom ? indexRooms(spaceRepository.findMappedRooms()) : Map.of();
+        List<SubjectResponse> schedule = new ArrayList<>();
+        subjects.forEach(a -> schedule.add(SubjectResponse.from(a, locate(rooms, a.aula()))));
+        personal.forEach(c -> schedule.add(SubjectResponse.fromPersonal(c, locate(rooms, c.aula()))));
+        schedule.sort(Comparator.comparing(SubjectResponse::horaInicio).thenComparing(SubjectResponse::nombre));
+        return schedule;
+    }
+
+    @Transactional
+    public SubjectResponse createPersonalClass(UUID userId, PersonalClassRequest request) {
+        if (personalClassRepository.countByUsuario(userId) >= MAX_PERSONAL_CLASSES) {
+            throw new BadRequestException("Puedes registrar hasta " + MAX_PERSONAL_CLASSES + " clases");
+        }
+        ClasePersonal candidate = toClasePersonal(null, userId, request);
+        ensureNoOverlap(candidate);
+        return withPersonalRoom(personalClassRepository.create(candidate));
+    }
+
+    @Transactional
+    public SubjectResponse updatePersonalClass(UUID userId, UUID id, PersonalClassRequest request) {
+        personalClassRepository.findByIdAndUsuario(id, userId)
+                .orElseThrow(() -> new NotFoundException("Clase no encontrada"));
+        ClasePersonal candidate = toClasePersonal(id, userId, request);
+        ensureNoOverlap(candidate);
+        return withPersonalRoom(personalClassRepository.update(candidate)
+                .orElseThrow(() -> new NotFoundException("Clase no encontrada")));
+    }
+
+    public void deletePersonalClass(UUID userId, UUID id) {
+        if (personalClassRepository.delete(id, userId) == 0) {
+            throw new NotFoundException("Clase no encontrada");
+        }
+    }
+
+    private ClasePersonal toClasePersonal(UUID id, UUID userId, PersonalClassRequest request) {
+        if (!request.horaFin().isAfter(request.horaInicio())) {
+            throw new BadRequestException("La hora de fin debe ser posterior a la hora de inicio");
+        }
+        return new ClasePersonal(
+                id,
+                userId,
+                request.nombre().trim(),
+                blankToNull(request.docente()),
+                blankToNull(request.aula()),
+                normalizeDays(request.dias()),
+                request.horaInicio(),
+                request.horaFin(),
+                null,
+                null);
+    }
+
+    private void ensureNoOverlap(ClasePersonal candidate) {
+        personalClassRepository.findOverlap(candidate.usuarioId(), candidate.dias(), candidate.horaInicio(),
+                candidate.horaFin(), candidate.id()).ifPresent(nombre -> {
+                    throw new ConflictException("Se cruza con " + nombre + " en ese horario");
+                });
+    }
+
+    private SubjectResponse withPersonalRoom(ClasePersonal clase) {
+        Map<String, UUID> rooms = clase.aula() == null ? Map.of() : indexRooms(spaceRepository.findMappedRooms());
+        return SubjectResponse.fromPersonal(clase, locate(rooms, clase.aula()));
+    }
+
+    private static UUID locate(Map<String, UUID> rooms, String aula) {
+        String key = TextUtils.normalizeRoom(aula);
+        return key == null ? null : rooms.get(key);
+    }
+
+    private static String blankToNull(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 
     private List<SubjectResponse> withRooms(List<Asignatura> subjects) {
